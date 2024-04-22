@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -66,7 +67,7 @@ public class UIManagerScript : MonoBehaviour
 {
     private const string CodexPath = "./Assets/Data/codex.json";
 
-    private TextMeshProUGUI _codexSectionTitleText;
+    private TextMeshProUGUI _titleSectionText;
     private readonly Dictionary<Toggle, GameObject> _topicTogglesToEntrySections = new();
     private readonly Dictionary<Toggle, int> _categoryTogglesToCategoryIndices = new();
     private Codex _codex;
@@ -79,9 +80,9 @@ public class UIManagerScript : MonoBehaviour
     {
         var codexTitleSection = codexSection.transform.Find("TitleSection");
         var textSection = codexTitleSection?.Find("TitleText").gameObject;
-        _codexSectionTitleText = textSection?.GetComponent<TextMeshProUGUI>();
+        _titleSectionText = textSection?.GetComponent<TextMeshProUGUI>();
 
-        if (!_codexSectionTitleText)
+        if (!_titleSectionText)
         {
             Debug.LogError("Could not find codex section title");
             return;
@@ -97,8 +98,8 @@ public class UIManagerScript : MonoBehaviour
             return;
         }
 
-        var categorySectionTransform = codexSection.transform.Find("CategorySection");
-        if (!categorySectionTransform)
+        var navigationSectionTransform = codexSection.transform.Find("NavigationSection");
+        if (!navigationSectionTransform)
         {
             Debug.LogError("Could not find category section");
             return;
@@ -107,7 +108,7 @@ public class UIManagerScript : MonoBehaviour
         for (var i = 0; i < _codex.categories.Count; i++)
         {
             var category = _codex.categories[i];
-            var toggleTransform = categorySectionTransform.Find(category.name + "Toggle");
+            var toggleTransform = navigationSectionTransform.Find("CategoriesSection").Find(category.name + "Toggle");
             if (!toggleTransform)
             {
                 Debug.LogError($"Could not find toggle for category {category.name}");
@@ -136,7 +137,7 @@ public class UIManagerScript : MonoBehaviour
         //TODO check index
         var codexCategory = _codex.categories[categoryIndex];
         _currentSections.category = codexCategory.name;
-        _codexSectionTitleText.text = codexCategory.name;
+        _titleSectionText.text = codexCategory.name;
         
         var topicsSectionTransform = codexSection.transform.Find("MainSection").Find("TopicsSection");
         if (!topicsSectionTransform)
@@ -170,7 +171,10 @@ public class UIManagerScript : MonoBehaviour
             var entryButton = entriesSection.Find("EntryButton");
 
             var toggle = topicToggle.gameObject.GetComponent<Toggle>();
-            _topicTogglesToEntrySections.Add(toggle, entriesSection.gameObject);
+            if (!_topicTogglesToEntrySections.ContainsKey(toggle))
+            {
+                _topicTogglesToEntrySections.Add(toggle, entriesSection.gameObject);
+            }
 
             toggle.onValueChanged.AddListener(delegate {
                 TopicToggleChanged(toggle);
@@ -249,11 +253,55 @@ public class UIManagerScript : MonoBehaviour
         var category = _codex.categories.Find(cat => cat.name == _currentSections.category);
         var topic = category.topics.Find(topic => topic.name == _currentSections.topic);
         var entry = topic.entries.Find(entry => entry.name == entryName);
+
+        _titleSectionText.text = entry.name;
         
         var textComponent = entrySectionTransform.Find("Text").GetComponent<TextMeshProUGUI>();
         textComponent.text = entry.text;
         //TODO entry image
+
+        var navSectionTransform = codexSection.transform.Find("NavigationSection");
+        navSectionTransform.Find("CategoriesSection").gameObject.SetActive(false);
+        var entryNavSectionTransform = navSectionTransform.Find("EntryNavSection");
+        entryNavSectionTransform.gameObject.SetActive(true);
+
+        var backNavToggle = entryNavSectionTransform.Find("BackNavToggle").GetComponent<Toggle>();
+        backNavToggle.onValueChanged.AddListener(delegate { OnBackNavToggle(); });
+
+        _currentSections.entry = entry.name;
         entrySectionTransform.gameObject.SetActive(true);
+    }
+
+    private void OnBackNavToggle()
+    {
+        var mainSectionTransform = codexSection.transform.Find("MainSection");
+        var topicsSectionTransform = mainSectionTransform.Find("TopicsSection");
+        if (!topicsSectionTransform)
+        {
+            Debug.LogError("Could not find topics section");
+            return;
+        }
+        
+        topicsSectionTransform.gameObject.SetActive(true);
+
+        var entrySectionTransform = mainSectionTransform.Find("EntrySection");
+        entrySectionTransform.gameObject.SetActive(false);
+
+        //TODO refactor logic to get category
+        var categoryToIndex = _categoryTogglesToCategoryIndices.First(pair =>
+        {
+            return pair.Key.name.Replace("Toggle", "") == _currentSections.category;
+        });
+
+        LoadCategory(categoryToIndex.Value);
+
+        //TODO not working
+        TopicToggleChanged(categoryToIndex.Key);
+        
+        var navSectionTransform = codexSection.transform.Find("NavigationSection");
+        navSectionTransform.Find("CategoriesSection").gameObject.SetActive(true);
+        var entryNavSectionTransform = navSectionTransform.Find("EntryNavSection");
+        entryNavSectionTransform.gameObject.SetActive(false);
     }
 
     private static string ReadFile(string path)
