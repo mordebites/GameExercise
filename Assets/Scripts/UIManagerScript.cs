@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -63,35 +62,71 @@ public class UIManagerScript : MonoBehaviour
     private TextMeshProUGUI _codexSectionTitleText;
     private readonly Dictionary<Toggle, GameObject> _topicTogglesToEntrySections = new();
     private readonly Dictionary<Toggle, int> _categoryTogglesToCategoryIndices = new();
+    private Codex _codex;
 
     public GameObject codexSection;
     public GameObject topicsSectionPrefab;
 
     private void Awake()
     {
-        var codexTitleSection = codexSection.transform.Find("CategoryTitleSection");
+        var codexTitleSection = codexSection.transform.Find("TitleSection");
         var textSection = codexTitleSection?.Find("TitleText").gameObject;
         _codexSectionTitleText = textSection?.GetComponent<TextMeshProUGUI>();
 
-        var jsonCodex = ReadFile(CodexPath);
-
-        //TODO handle parsing errors
-        var codex = JsonUtility.FromJson<Codex>(jsonCodex);
-        
-        if (codex.categories != null && _codexSectionTitleText)
-            _codexSectionTitleText.text = codex.categories[0].name;
-
-        if (codex.categories == null)
+        if (!_codexSectionTitleText)
         {
-            Debug.LogError("Could not find categories");
+            Debug.LogError("Could not find codex section title");
             return;
         }
+
+        //TODO handle parsing errors
+        var jsonCodex = ReadFile(CodexPath);
+        _codex = JsonUtility.FromJson<Codex>(jsonCodex);
+        
+        if (_codex.categories == null)
+        {
+            Debug.LogError("Could not find categories in parsed codex");
+            return;
+        }
+
+        var categorySectionTransform = codexSection.transform.Find("CategorySection");
+        if (!categorySectionTransform)
+        {
+            Debug.LogError("Could not find category section");
+            return;
+        }
+
+        for (var i = 0; i < _codex.categories.Count; i++)
+        {
+            var category = _codex.categories[i];
+            var toggleTransform = categorySectionTransform.Find(category.name + "Toggle");
+            if (!toggleTransform)
+            {
+                Debug.LogError($"Could not find toggle for category {category.name}");
+                return;
+            }
+
+            var toggle = toggleTransform.GetComponent<Toggle>();
+            if (!toggle)
+            {
+                Debug.LogError($"Could not find toggle component for category {category.name}");
+                return;
+            }
+
+            _categoryTogglesToCategoryIndices.Add(toggle, i);
             
-        LoadCategory(codex.categories[0]);
+            toggle.onValueChanged.AddListener(delegate {
+                CategoryToggleChanged(toggle);
+            });
+        }
+
+        LoadCategory(_codex.categories[0]);
     }
 
     private void LoadCategory(Category codexCategory)
     {
+        _codexSectionTitleText.text = codexCategory.name;
+        
         var topicsSectionTransform = codexSection.transform.Find("TopicsContainerSection").Find("TopicsSection");
         if (!topicsSectionTransform)
         {
@@ -104,7 +139,10 @@ public class UIManagerScript : MonoBehaviour
         for (var i = 0; i < count; i++)
         {
             var childTransform = topicsSectionTransform.GetChild(i);
-            childTransform.gameObject.SetActive(false);
+            //TODO reuse UI elements
+            // childTransform.gameObject.SetActive(false);
+            
+            Destroy(childTransform.gameObject);
         }
         
         //populate topics section based on codex
@@ -163,6 +201,15 @@ public class UIManagerScript : MonoBehaviour
         if (found && section)
         {
             section.SetActive(!section.activeSelf);
+        }
+    }
+
+    private void CategoryToggleChanged(Toggle toggle)
+    {
+        var found = _categoryTogglesToCategoryIndices.TryGetValue(toggle, out int index);
+        if (found)
+        {
+            LoadCategory(_codex.categories[index]);
         }
     }
 
