@@ -205,7 +205,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 118569114}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 1142513635}
+        m_TargetAssemblyTypeName: UIManagerScript, Assembly-CSharp
+        m_MethodName: OnMoveButtonPressed
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &118569114
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -309,6 +321,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   freeSquareMaterial: {fileID: 2100000, guid: b399d1079ef54ead4bbab554fd4187d7, type: 2}
   opponentSquareMaterial: {fileID: 2100000, guid: b63187c1eb54c174ea9df6d7a535f80f, type: 2}
+  defendedSquareMaterial: {fileID: 2100000, guid: 8b49ce893b6ea91e0943815486c9982e, type: 2}
   selectorPrefab: {fileID: 1625892269204815410, guid: 9fe3d31d8e97702299e0f96e7f44a4ef, type: 3}
 --- !u!114 &154889369
 MonoBehaviour:
@@ -1453,7 +1466,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 986765757}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 1142513635}
+        m_TargetAssemblyTypeName: UIManagerScript, Assembly-CSharp
+        m_MethodName: OnDefendButtonPressed
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &986765757
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1776,6 +1801,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   codexSection: {fileID: 1498977376}
   topicsSectionPrefab: {fileID: 8576129133705943480, guid: e25b83270ecf57aaebb6635845a60b59, type: 3}
+  moveButtonPressed:
+    m_PersistentCalls:
+      m_Calls: []
+  defendButtonPressed:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!4 &1142513636
 Transform:
   m_ObjectHideFlags: 0

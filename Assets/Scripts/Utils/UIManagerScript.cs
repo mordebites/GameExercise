@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 using GameObject = UnityEngine.GameObject;
 
@@ -76,6 +77,9 @@ public class UIManagerScript : MonoBehaviour
 
     public GameObject codexSection;
     public GameObject topicsSectionPrefab;
+
+    public UnityEvent moveButtonPressed;
+    public UnityEvent defendButtonPressed;
 
     private void Awake()
     {
@@ -212,6 +216,31 @@ public class UIManagerScript : MonoBehaviour
 
     }
 
+    public void OnMoveButtonPressed()
+    {
+        HideActionButtons();
+        moveButtonPressed.Invoke();
+    }
+    
+    public void OnDefendButtonPressed()
+    {
+        HideActionButtons();
+        defendButtonPressed.Invoke();
+    }
+
+    public void ShowActionButtonsAtPosition(Vector3 position)
+    {
+        var buttonsTransform = _gameSection.transform.Find("ActionButtons");
+        var pos = Camera.main.WorldToScreenPoint(position);
+        buttonsTransform.position = pos;
+        buttonsTransform.gameObject.SetActive(true);
+    }
+    
+    public void HideActionButtons()
+    {
+        var buttonsTransform = _gameSection.transform.Find("ActionButtons");
+        buttonsTransform.gameObject.SetActive(false);
+    }
 
     public void CodexToggleChanged(Toggle change)
     {

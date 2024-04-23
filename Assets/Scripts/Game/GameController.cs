@@ -15,7 +15,7 @@ public class GameController : MonoBehaviour
     }
 
     private const int MaxActionPointsPerTurn = 4;
-    
+
     [SerializeField] private BoardLayout startingBoardLayout;
     [SerializeField] private Board board;
     private UIManagerScript _uiManager;
@@ -23,11 +23,12 @@ public class GameController : MonoBehaviour
 
     private Player _whitePlayer;
     private Player _blackPlayer;
-    private Player _activePlayer;
 
     private GameState _state;
     private int _turnCounter;
     private int _currentPlayerActionPoints;
+
+    public Player activePlayer { get; private set; }
 
     private void Awake()
     {
@@ -55,7 +56,7 @@ public class GameController : MonoBehaviour
         _state = GameState.Init;
         _turnCounter = 1;
         _currentPlayerActionPoints = MaxActionPointsPerTurn;
-        _activePlayer = _whitePlayer;
+        activePlayer = _whitePlayer;
 
         board.SetDependencies(this, _uiManager);
         CreateTokensFromLayout(startingBoardLayout);
@@ -75,7 +76,7 @@ public class GameController : MonoBehaviour
             var typeName = boardLayout.GetTokenNameAtIndex(i);
             var colour = boardLayout.GetSquareTeamColourAtIndex(i);
             var type = Type.GetType(typeName);
-            
+
             CreateTokenAndInitialize(coords, type, colour);
         }
     }
@@ -96,9 +97,9 @@ public class GameController : MonoBehaviour
 
     public bool IsTeamTurnActive(TeamColour tokenTeam)
     {
-        return tokenTeam == _activePlayer.team;
+        return tokenTeam == activePlayer.team;
     }
-    
+
     public void UseActivePlayerActionPoint()
     {
         _currentPlayerActionPoints = Math.Max(0, _currentPlayerActionPoints - 1);
@@ -117,14 +118,24 @@ public class GameController : MonoBehaviour
         else
         {
             _turnCounter++;
-            var nextPlayer = GetNextTurnPlayer(_activePlayer);
+            var nextPlayer = GetOpponent(activePlayer);
             ChangeActiveTeam(nextPlayer);
+            ClearDefendedSquares();
+        }
+    }
+
+    private void ClearDefendedSquares()
+    {
+        board.ClearDefendedSquares(activePlayer);
+        foreach (var token in activePlayer.activeTokens)
+        {
+            token.IsDefending = false;
         }
     }
 
     private bool IsGameFinished()
     {
-        return _whitePlayer.activeTokens.Count == 0 
+        return _whitePlayer.activeTokens.Count == 0
                || _blackPlayer.activeTokens.Count == 0;
     }
 
@@ -135,11 +146,11 @@ public class GameController : MonoBehaviour
 
     private void ChangeActiveTeam(Player player)
     {
-        _activePlayer = player;
+        activePlayer = player;
         _currentPlayerActionPoints = MaxActionPointsPerTurn;
     }
 
-    private Player GetNextTurnPlayer(Player player)
+    public Player GetOpponent(Player player)
     {
         return player == _whitePlayer ? _blackPlayer : _whitePlayer;
     }

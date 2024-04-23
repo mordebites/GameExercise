@@ -16,6 +16,7 @@ public class Board : MonoBehaviour
     private GameController _controller;
     private UIManagerScript _uiManager;
     private SquareSelectorCreator _squareSelector;
+    private Vector2Int _lastSelectedSquare;
 
     private void Awake()
     {
@@ -27,6 +28,44 @@ public class Board : MonoBehaviour
     {
         _controller = gameController;
         _uiManager = uiManager;
+        _uiManager.moveButtonPressed.AddListener(OnMoveButtonPressed);
+        _uiManager.defendButtonPressed.AddListener(OnDefendButtonPressed);
+    }
+
+    public void ClearDefendedSquares(Player player)
+    {
+        _squareSelector.ClearDefendedSquares(player);
+    }
+
+    private void OnDefendButtonPressed()
+    {
+        if (!_controller.IsGameInProgress()) return;
+
+        Token token = GetTokenOnSquare(_lastSelectedSquare);
+
+        if (!_selectedToken
+            || !_selectedToken.CanMoveTo(_lastSelectedSquare)
+            || token)
+            return;
+
+        _selectedToken.IsDefending = true;
+        var position = CalculatePositionFromCoords(_lastSelectedSquare);
+        _squareSelector.ShowDefendedSquare(position, _controller.activePlayer, _selectedToken);
+        OnMoveSelectedToken(_lastSelectedSquare, _selectedToken);
+    }
+
+    private void OnMoveButtonPressed()
+    {
+        if (!_controller.IsGameInProgress()) return;
+
+        Token token = GetTokenOnSquare(_lastSelectedSquare);
+
+        if (!_selectedToken
+            || !_selectedToken.CanMoveTo(_lastSelectedSquare)
+            || token)
+            return;
+
+        OnMoveSelectedToken(_lastSelectedSquare, _selectedToken);
     }
 
     private void CreateGrid()
@@ -47,22 +86,29 @@ public class Board : MonoBehaviour
     public void OnSquareSelected(Vector3 inputPosition)
     {
         if (!_controller.IsGameInProgress()) return;
-        
+
         Vector2Int coords = CalculateCoordsFromPosition(inputPosition);
         Token token = GetTokenOnSquare(coords);
 
         //a token is already selected
         if (_selectedToken)
         {
-            if (_selectedToken.CanMoveTo(coords))
+            if (!_selectedToken.CanMoveTo(coords)) return;
+
+            if (HasSquareOpponentToken(coords))
             {
                 OnMoveSelectedToken(coords, _selectedToken);
+            }
+            else
+            {
+                _uiManager.ShowActionButtonsAtPosition(inputPosition);
+                _lastSelectedSquare = coords;
             }
         }
         else //no currently selected token
         {
             //clicked on token from the same team
-            if (token && _controller.IsTeamTurnActive(token.Team))
+            if (token && _controller.IsTeamTurnActive(token.Team) && !token.IsDefending)
             {
                 SelectToken(token);
             }
@@ -77,7 +123,7 @@ public class Board : MonoBehaviour
             if (isOpponentDead)
             {
                 TakeToken(coords);
-                
+
                 UpdateBoardOnTokenMove(coords, token.OccupiedSquare, token, null);
                 token.MoveToken(coords);
             }
@@ -87,7 +133,7 @@ public class Board : MonoBehaviour
             UpdateBoardOnTokenMove(coords, token.OccupiedSquare, token, null);
             token.MoveToken(coords);
         }
-        
+
         DeselectToken();
         _controller.UseActivePlayerActionPoint();
     }
@@ -135,22 +181,33 @@ public class Board : MonoBehaviour
 
     private void ShowAvailableMovesSquares(List<Vector2Int> moves)
     {
-        Dictionary<Vector3,bool> squareData = new();
+        Dictionary<Vector3, bool> squareData = new();
 
         foreach (var move in moves)
         {
             var position = CalculatePositionFromCoords(move);
-            var isFree = !GetTokenOnSquare(move);
-            squareData.Add(position, isFree);
+            var token = GetTokenOnSquare(move);
+
+            if (token)
+            {
+                if (!token.IsDefending)
+                {
+                    squareData.Add(position, false);
+                }
+            }
+            else
+            {
+                squareData.Add(position, true);
+            }
         }
 
-        _squareSelector.ShowSelection(squareData);
+        _squareSelector.ShowAvailableMoves(squareData, _selectedToken);
     }
 
     private void DeselectToken()
     {
         _selectedToken = null;
-        _squareSelector.ClearSelection();
+        _squareSelector.ClearAvailableMoves();
     }
 
     public Token GetTokenOnSquare(Vector2Int coords)

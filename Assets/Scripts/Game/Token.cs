@@ -19,6 +19,8 @@ public abstract class Token : MonoBehaviour
     public int Health { get; set; }
     public int Attack { get; protected set; }
     public int Defence { get; protected set; }
+
+    public bool IsDefending { get; set; }
     public Vector2Int OccupiedSquare { get; private set; }
     public TeamColour Team { get; private set; }
     public List<Vector2Int> availableMoves;
@@ -47,6 +49,8 @@ public abstract class Token : MonoBehaviour
                     TryAddMove(nextCoords);
                 else if (!token.IsFromSameTeam(this))
                 {
+                    if (token.IsDefending) continue;
+                    
                     TryAddMove(nextCoords);
                     break;
                 }
@@ -68,7 +72,7 @@ public abstract class Token : MonoBehaviour
 
     public bool CanMoveTo(Vector2Int coords)
     {
-        return availableMoves.Contains(coords);
+        return !IsDefending && availableMoves.Contains(coords);
     }
 
     private void TryAddMove(Vector2Int coords)
