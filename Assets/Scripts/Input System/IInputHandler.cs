@@ -6,8 +6,9 @@ public interface IInputHandler
     enum InputType
     {
         Hover,
-        Click
+        LeftClick,
+        RightClick
     }
     
-    void ProcessInput(Vector3 inputPosition,  InputType inputType);
+    void ProcessInput(Vector3? inputPosition,  InputType inputType);
 }

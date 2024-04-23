@@ -11,15 +11,21 @@ public class BoardInputHandler : MonoBehaviour, IInputHandler
         _board = GetComponent<Board>();
     }
 
-    public void ProcessInput(Vector3 inputPosition, IInputHandler.InputType inputType)
+    public void ProcessInput(Vector3? inputPosition, IInputHandler.InputType inputType)
     {
-        if (inputType == IInputHandler.InputType.Click)
+        switch (inputType)
         {
-            _board.OnSquareSelected(inputPosition);
-        }
-        else
-        {
-            //_board.OnSquareHovered(inputPosition);
+            case IInputHandler.InputType.Hover:
+                _board.OnSquareHovered(inputPosition);
+                break;
+            case IInputHandler.InputType.LeftClick:
+                _board.OnSquareSelected(inputPosition);
+                break;
+            case IInputHandler.InputType.RightClick:
+                _board.OnCancelMove();
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(inputType), inputType, null);
         }
     }
 }

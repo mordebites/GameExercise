@@ -5,10 +5,22 @@ using UnityEngine;
 public class ColliderInputReceiver : InputReceiver
 {
     private Vector3? _clickedPosition;
-    private Vector3 _hoveredPosition;
+    private Vector3? _hoveredPosition;
+    private bool _rightClicked;
 
     private void Update()
     {
+        //right click
+        if (Input.GetMouseButtonDown(1))
+        {
+            _rightClicked = true;
+            OnInputReceived();
+        }
+        else
+        {
+            _rightClicked = false;
+        }
+        
         //Returns a ray going from camera through a screen point
         var ray = Camera.main?.ScreenPointToRay(Input.mousePosition);
             
@@ -33,11 +45,17 @@ public class ColliderInputReceiver : InputReceiver
     {
         foreach (var inputHandler in InputHandlers)
         {
+            if (_rightClicked)
+            {
+                inputHandler.ProcessInput(null, IInputHandler.InputType.RightClick);
+                continue;
+            }
+            
             inputHandler.ProcessInput(_hoveredPosition, IInputHandler.InputType.Hover);
             
             if (_clickedPosition.HasValue)
             {
-                inputHandler.ProcessInput(_clickedPosition.Value, IInputHandler.InputType.Click);
+                inputHandler.ProcessInput(_clickedPosition.Value, IInputHandler.InputType.LeftClick);
             }
         }
     }

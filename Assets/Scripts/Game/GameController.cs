@@ -54,13 +54,32 @@ public class GameController : MonoBehaviour
     private void StartNewGame()
     {
         _state = GameState.Init;
-        _turnCounter = 1;
-        _currentPlayerActionPoints = MaxActionPointsPerTurn;
-        activePlayer = _whitePlayer;
+        UpdateTurnCounter(1);
+        UpdateActionPoints(MaxActionPointsPerTurn);
+        ChangeActiveTeam(_whitePlayer);
 
+        _uiManager.endTurnButtonPressed.AddListener(OnEndTurnButtonPressed);
+        
         board.SetDependencies(this, _uiManager);
         CreateTokensFromLayout(startingBoardLayout);
         _state = GameState.Play;
+    }
+
+    private void OnEndTurnButtonPressed()
+    {
+        EndTurn();
+    }
+
+    private void UpdateActionPoints(int newPoints)
+    {
+        _currentPlayerActionPoints = newPoints;
+        _uiManager.UpdateActionPoints(_currentPlayerActionPoints);
+    }
+
+    private void UpdateTurnCounter(int newCounter)
+    {
+        _turnCounter = newCounter;
+        _uiManager.UpdateTurnCounter(newCounter);
     }
 
     public bool IsGameInProgress()
@@ -102,7 +121,8 @@ public class GameController : MonoBehaviour
 
     public void UseActivePlayerActionPoint()
     {
-        _currentPlayerActionPoints = Math.Max(0, _currentPlayerActionPoints - 1);
+        var points = Math.Max(0, _currentPlayerActionPoints - 1);
+        UpdateActionPoints(points);
         if (_currentPlayerActionPoints == 0)
         {
             EndTurn();
@@ -117,7 +137,7 @@ public class GameController : MonoBehaviour
         }
         else
         {
-            _turnCounter++;
+            UpdateTurnCounter(_turnCounter + 1);
             var nextPlayer = GetOpponent(activePlayer);
             ChangeActiveTeam(nextPlayer);
             ClearDefendedSquares();
@@ -142,15 +162,20 @@ public class GameController : MonoBehaviour
     private void EndGame()
     {
         _state = GameState.Finished;
+
+        var winner = _whitePlayer.activeTokens.Count > 0 ? _whitePlayer : _blackPlayer;
+        _uiManager.ShowWinnerText(winner.team.ToString());
     }
 
     private void ChangeActiveTeam(Player player)
     {
         activePlayer = player;
-        _currentPlayerActionPoints = MaxActionPointsPerTurn;
+        UpdateActionPoints(MaxActionPointsPerTurn);
+        
+        _uiManager.UpdateCurrentPlayer(activePlayer.team.ToString());
     }
 
-    public Player GetOpponent(Player player)
+    private Player GetOpponent(Player player)
     {
         return player == _whitePlayer ? _blackPlayer : _whitePlayer;
     }

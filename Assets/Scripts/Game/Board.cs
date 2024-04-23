@@ -83,11 +83,40 @@ public class Board : MonoBehaviour
         return _grid.Cast<Token>().Any(currentToken => token == currentToken);
     }
 
-    public void OnSquareSelected(Vector3 inputPosition)
+    public void OnCancelMove()
+    {
+        if (!_selectedToken) return;
+        
+        DeselectToken();
+        _controller.UseActivePlayerActionPoint();
+        _uiManager.HideActionButtons();
+    }
+
+    public void OnSquareHovered(Vector3? inputPosition)
     {
         if (!_controller.IsGameInProgress()) return;
+        if (!inputPosition.HasValue) return;
+        
+        Vector2Int coords = CalculateCoordsFromPosition(inputPosition.Value);
+        Token token = GetTokenOnSquare(coords);
+        if (token && token != _selectedToken)
+        {
+            _uiManager.ShowTokenInfoPanel(inputPosition.Value, token.Health, token.Attack, token.Defence);   
+        }
+        else
+        {
+            _uiManager.HideTokenInfoPanel();
+                
+        }
+    }
 
-        Vector2Int coords = CalculateCoordsFromPosition(inputPosition);
+    public void OnSquareSelected(Vector3? inputPosition)
+    {
+        if (!_controller.IsGameInProgress()) return;
+        if (!inputPosition.HasValue) return;
+        
+
+        Vector2Int coords = CalculateCoordsFromPosition(inputPosition.Value);
         Token token = GetTokenOnSquare(coords);
 
         //a token is already selected
@@ -101,7 +130,7 @@ public class Board : MonoBehaviour
             }
             else
             {
-                _uiManager.ShowActionButtonsAtPosition(inputPosition);
+                _uiManager.ShowActionButtonsAtPosition(inputPosition.Value);
                 _lastSelectedSquare = coords;
             }
         }
