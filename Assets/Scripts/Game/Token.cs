@@ -13,8 +13,12 @@ public abstract class Token : MonoBehaviour
     private readonly Vector2Int[] _directions =
         { Vector2Int.left, Vector2Int.up, Vector2Int.right, Vector2Int.down };
     
-    private MaterialSetter materialSetter;
+    private MaterialSetter _materialSetter;
     private Board Board { get; set; }
+
+    public int Health { get; set; }
+    public int Attack { get; protected set; }
+    public int Defence { get; protected set; }
     public Vector2Int OccupiedSquare { get; private set; }
     public TeamColour Team { get; private set; }
     public List<Vector2Int> availableMoves;
@@ -22,7 +26,7 @@ public abstract class Token : MonoBehaviour
     private void Awake()
     {
         availableMoves = new List<Vector2Int>();
-        materialSetter = GetComponent<MaterialSetter>();
+        _materialSetter = GetComponent<MaterialSetter>();
     }
 
     public void SelectAvailableSquares()
@@ -54,7 +58,7 @@ public abstract class Token : MonoBehaviour
 
     public void SetMaterial(Material material)
     {
-        materialSetter.SetSingleMaterial(material);
+        _materialSetter.SetSingleMaterial(material);
     }
 
     public bool IsFromSameTeam(Token token)

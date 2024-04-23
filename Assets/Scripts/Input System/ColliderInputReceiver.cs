@@ -23,7 +23,7 @@ public class ColliderInputReceiver : InputReceiver
 
     public override void OnInputReceived()
     {
-        foreach (var inputHandler in inputHandlers)
+        foreach (var inputHandler in InputHandlers)
         {
             inputHandler.ProcessInput(_clickedPosition, null, null);
         }

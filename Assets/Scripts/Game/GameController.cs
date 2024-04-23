@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Enums;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 [RequireComponent(typeof(TokenCreator))]
 public class GameController : MonoBehaviour
@@ -17,6 +18,7 @@ public class GameController : MonoBehaviour
     
     [SerializeField] private BoardLayout startingBoardLayout;
     [SerializeField] private Board board;
+    private UIManagerScript _uiManager;
     private TokenCreator _tokenCreator;
 
     private Player _whitePlayer;
@@ -37,6 +39,10 @@ public class GameController : MonoBehaviour
     {
         _whitePlayer = new Player(TeamColour.White, board);
         _blackPlayer = new Player(TeamColour.Black, board);
+
+        var uiManagerObject = gameObject.scene.GetRootGameObjects()
+            .First(o => o.name == "UIManager");
+        _uiManager = uiManagerObject.GetComponent<UIManagerScript>();
     }
 
     void Start()
@@ -51,7 +57,7 @@ public class GameController : MonoBehaviour
         _currentPlayerActionPoints = MaxActionPointsPerTurn;
         _activePlayer = _whitePlayer;
 
-        board.SetDependencies(this);
+        board.SetDependencies(this, _uiManager);
         CreateTokensFromLayout(startingBoardLayout);
         _state = GameState.Play;
     }

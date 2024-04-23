@@ -72,12 +72,16 @@ public class UIManagerScript : MonoBehaviour
     private readonly Dictionary<Toggle, int> _categoryTogglesToCategoryIndices = new();
     private Codex _codex;
     private CurrentSections _currentSections;
+    private GameObject _gameSection;
 
     public GameObject codexSection;
     public GameObject topicsSectionPrefab;
 
     private void Awake()
     {
+        _gameSection = gameObject.scene.GetRootGameObjects()
+            .First(o => o.name == "Canvas")
+            .transform.Find("GameSection").gameObject;
         var codexTitleSection = codexSection.transform.Find("TitleSection");
         var textSection = codexTitleSection?.Find("TitleText").gameObject;
         _titleSectionText = textSection?.GetComponent<TextMeshProUGUI>();

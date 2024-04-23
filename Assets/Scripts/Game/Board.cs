@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -5,7 +6,7 @@ using UnityEngine;
 [RequireComponent(typeof(SquareSelectorCreator))]
 public class Board : MonoBehaviour
 {
-    public const int BoardSize = 8;
+    private const int BoardSize = 8;
 
     [SerializeField] private Transform bottomLeftSquareTransform;
     [SerializeField] private float squareSize;
@@ -13,6 +14,7 @@ public class Board : MonoBehaviour
     private Token[,] _grid;
     private Token _selectedToken;
     private GameController _controller;
+    private UIManagerScript _uiManager;
     private SquareSelectorCreator _squareSelector;
 
     private void Awake()
@@ -21,9 +23,10 @@ public class Board : MonoBehaviour
         CreateGrid();
     }
 
-    public void SetDependencies(GameController gameController)
+    public void SetDependencies(GameController gameController, UIManagerScript uiManager)
     {
         _controller = gameController;
+        _uiManager = uiManager;
     }
 
     private void CreateGrid()
@@ -68,29 +71,45 @@ public class Board : MonoBehaviour
 
     private void OnMoveSelectedToken(Vector2Int coords, Token token)
     {
-        TryAttackOpponentToken(coords);
-        UpdateBoardOnTokenMove(coords, token.OccupiedSquare, token, null);
-        token.MoveToken(coords);
+        if (HasSquareOpponentToken(coords))
+        {
+            var isOpponentDead = AttackToken(coords);
+            if (isOpponentDead)
+            {
+                TakeToken(coords);
+                
+                UpdateBoardOnTokenMove(coords, token.OccupiedSquare, token, null);
+                token.MoveToken(coords);
+            }
+        }
+        else
+        {
+            UpdateBoardOnTokenMove(coords, token.OccupiedSquare, token, null);
+            token.MoveToken(coords);
+        }
+        
         DeselectToken();
         _controller.UseActivePlayerActionPoint();
     }
 
-    private void TryAttackOpponentToken(Vector2Int coords)
+    private bool HasSquareOpponentToken(Vector2Int coords)
     {
         var token = GetTokenOnSquare(coords);
-        if (token && !token.IsFromSameTeam(_selectedToken))
-        {
-            AttackToken(token);
-        }
+        return token && !token.IsFromSameTeam(_selectedToken);
     }
 
-    private void AttackToken(Token token)
+    private bool AttackToken(Vector2Int coords)
     {
-        Debug.Log("Attack not implemented");
+        var token = GetTokenOnSquare(coords);
+        var damage = Math.Max(0, _selectedToken.Attack - token.Defence);
+        token.Health -= damage;
+
+        return token.Health <= 0;
     }
 
-    private void TakeToken(Token token)
+    private void TakeToken(Vector2Int coords)
     {
+        var token = GetTokenOnSquare(coords);
         _grid[token.OccupiedSquare.x, token.OccupiedSquare.y] = null;
         _controller.OnTokenRemoved(token);
     }
