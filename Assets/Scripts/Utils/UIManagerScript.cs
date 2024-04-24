@@ -2,11 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using JetBrains.Annotations;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
-using UnityEngine.Pool;
-using UnityEngine.Serialization;
 using UnityEngine.UI;
 using GameObject = UnityEngine.GameObject;
 
@@ -81,6 +80,8 @@ public class UIManagerScript : MonoBehaviour
     private TextMeshProUGUI _titleSectionText;
 
     public GameObject codexSection;
+    public GameObject topicsSection;
+    public GameObject entrySection;
     public GameObject topicsSectionPrefab;
     public GameObject codexEntryButtonPrefab;
     public TextMeshProUGUI winnerTextComponent;
@@ -112,6 +113,7 @@ public class UIManagerScript : MonoBehaviour
             Debug.LogError("Could not find categories in parsed codex");
             return;
         }
+
         _codex = codex.Value;
 
         SetupCodexCategoryToggles();
@@ -194,7 +196,7 @@ public class UIManagerScript : MonoBehaviour
         _selectedCodexSections.category = codexCategory.name;
         _titleSectionText.text = codexCategory.name;
 
-        var topicsSectionTransform = codexSection.transform.Find("MainSection").Find("TopicsSection");
+        var topicsSectionTransform = topicsSection.transform;
         if (!topicsSectionTransform)
         {
             Debug.LogError("Could not find topics section");
@@ -372,9 +374,7 @@ public class UIManagerScript : MonoBehaviour
 
     private void EntryButtonClicked(string entryName)
     {
-        //TODO error handling
-        var mainSectionTransform = codexSection.transform.Find("MainSection");
-        var topicsSectionTransform = mainSectionTransform.Find("TopicsSection");
+        var topicsSectionTransform = topicsSection.transform;
         if (!topicsSectionTransform)
         {
             Debug.LogError("Could not find topics section");
@@ -382,8 +382,7 @@ public class UIManagerScript : MonoBehaviour
         }
 
         topicsSectionTransform.gameObject.SetActive(false);
-
-        var entrySectionTransform = mainSectionTransform.Find("EntrySection");
+        var entrySectionTransform = entrySection.transform;
 
         var category = _codex.categories.Find(cat => cat.name == _selectedCodexSections.category);
         var topic = category.topics.Find(topic => topic.name == _selectedCodexSections.topic);
@@ -393,7 +392,14 @@ public class UIManagerScript : MonoBehaviour
 
         var textComponent = entrySectionTransform.Find("Text").GetComponent<TextMeshProUGUI>();
         textComponent.text = entry.text;
-        //TODO entry image
+
+        var imageComponent = entrySectionTransform.Find("Image").GetComponent<Image>();
+        var result = LoadImage(entry.image, out Texture2D tex);
+        if (result)
+        {
+            imageComponent.sprite =
+                Sprite.Create(tex, new Rect(0.0f, 0.0f, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+        }
 
         var navSectionTransform = codexSection.transform.Find("NavigationSection");
         navSectionTransform.Find("CategoriesSection").gameObject.SetActive(false);
@@ -407,10 +413,28 @@ public class UIManagerScript : MonoBehaviour
         entrySectionTransform.gameObject.SetActive(true);
     }
 
+    private static bool LoadImage(string path, out Texture2D texture)
+    {
+        var loadTexture = new Texture2D(1, 1);
+        texture = loadTexture;
+
+        try
+        {
+            var bytes = File.ReadAllBytes(path);
+            loadTexture.LoadImage(bytes);
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning("Could not load image. " + e);
+            return false;
+        }
+
+        return true;
+    }
+
     private void OnBackNavToggle()
     {
-        var mainSectionTransform = codexSection.transform.Find("MainSection");
-        var topicsSectionTransform = mainSectionTransform.Find("TopicsSection");
+        var topicsSectionTransform = topicsSection.transform;
         if (!topicsSectionTransform)
         {
             Debug.LogError("Could not find topics section");
@@ -419,7 +443,7 @@ public class UIManagerScript : MonoBehaviour
 
         topicsSectionTransform.gameObject.SetActive(true);
 
-        var entrySectionTransform = mainSectionTransform.Find("EntrySection");
+        var entrySectionTransform = entrySection.transform;
         entrySectionTransform.gameObject.SetActive(false);
 
         //TODO refactor logic to get category
