@@ -14,7 +14,7 @@ public class Board : MonoBehaviour
     private Token[,] _grid;
     private Token _selectedToken;
     private GameController _controller;
-    private UIManagerScript _uiManager;
+    private UIManager _uiManager;
     private SquareSelectorCreator _squareSelector;
     private Vector2Int _lastSelectedSquare;
 
@@ -24,7 +24,7 @@ public class Board : MonoBehaviour
         CreateGrid();
     }
 
-    public void SetDependencies(GameController gameController, UIManagerScript uiManager)
+    public void SetDependencies(GameController gameController, UIManager uiManager)
     {
         _controller = gameController;
         _uiManager = uiManager;

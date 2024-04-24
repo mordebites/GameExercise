@@ -18,7 +18,7 @@ public class GameController : MonoBehaviour
 
     [SerializeField] private BoardLayout startingBoardLayout;
     [SerializeField] private Board board;
-    private UIManagerScript _uiManager;
+    private UIManager _uiManager;
     private TokenCreator _tokenCreator;
 
     private Player _whitePlayer;
@@ -43,7 +43,7 @@ public class GameController : MonoBehaviour
 
         var uiManagerObject = gameObject.scene.GetRootGameObjects()
             .First(o => o.name == "UIManager");
-        _uiManager = uiManagerObject.GetComponent<UIManagerScript>();
+        _uiManager = uiManagerObject.GetComponent<UIManager>();
     }
 
     void Start()

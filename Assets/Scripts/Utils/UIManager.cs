@@ -63,7 +63,7 @@ struct SelectedCodexSections
     public string entry;
 }
 
-public class UIManagerScript : MonoBehaviour
+public class UIManager : MonoBehaviour
 {
     //codex contents
     private const string CodexPath = "./Assets/Data/codex.json";
@@ -190,28 +190,31 @@ public class UIManagerScript : MonoBehaviour
         for (var i = 0; i < count; i++)
         {
             var childTransform = topicsSectionTransform.GetChild(i);
-            //TODO reuse UI elements
-            // childTransform.gameObject.SetActive(false);
-
-            Destroy(childTransform.gameObject);
+            childTransform.gameObject.SetActive(false);
         }
 
+        var index = 0;
         foreach (var topic in codexCategory.topics)
         {
-            SetupCodexTopic(topicsSectionTransform, topic);
+            SetupCodexTopic(topic, index);
+            index++;
         }
     }
 
-    private void SetupCodexTopic(Transform topicsSectionTransform, Topic topic)
+    private void SetupCodexTopic(Topic topic, int index)
     {
-        var topicSection = Instantiate(topicSectionPrefab, topicsSectionTransform, true);
+        var topicSection = 
+            index >= topicsSection.transform.childCount 
+                ? Instantiate(topicSectionPrefab, topicsSection.transform, true) 
+                : topicsSection.transform.GetChild(index).gameObject;
+        
+        topicSection.SetActive(true);
         var topicToggleTransform = topicSection.transform.Find("TopicToggle");
 
-        var toggleText = topicToggleTransform.Find("Text");
-        var textComponent = toggleText.GetComponent<TextMeshProUGUI>();
+        var textComponent = topicToggleTransform.Find("Text").GetComponent<TextMeshProUGUI>();
         textComponent.text = topic.name;
 
-        var toggleComponent = topicToggleTransform.gameObject.GetComponent<Toggle>();
+        var toggleComponent = topicToggleTransform.GetComponent<Toggle>();
         var entriesSection = topicSection.transform.Find("EntriesSection");
         if (!_topicTogglesToEntrySections.ContainsKey(toggleComponent))
         {

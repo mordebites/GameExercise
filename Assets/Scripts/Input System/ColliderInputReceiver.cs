@@ -4,8 +4,10 @@ using UnityEngine;
 
 public class ColliderInputReceiver : InputReceiver
 {
-    private Vector3? _clickedPosition;
-    private Vector3? _hoveredPosition;
+    [SerializeField] private Camera mainCamera;
+    private Vector3 _hoveredPosition;
+    private Vector3 _leftClickedPosition;
+    private bool _leftClicked;
     private bool _rightClicked;
 
     private void Update()
@@ -22,23 +24,23 @@ public class ColliderInputReceiver : InputReceiver
         }
         
         //Returns a ray going from camera through a screen point
-        var ray = Camera.main?.ScreenPointToRay(Input.mousePosition);
+        var ray = mainCamera.ScreenPointToRay(Input.mousePosition);
             
         //Casts a ray against all colliders in the Scene
-        if (ray.HasValue && Physics.Raycast(ray.Value, out RaycastHit hit))
+        if (!Physics.Raycast(ray, out RaycastHit hit)) return;
+        
+        _hoveredPosition = hit.point;
+        if (Input.GetMouseButtonDown(0))
         {
-            _hoveredPosition = hit.point;
-            if (Input.GetMouseButtonDown(0))
-            {
-                _clickedPosition = hit.point;
-            }
-            else
-            {
-                _clickedPosition = null;
-            }
-
-            OnInputReceived();
+            _leftClicked = true;
+            _leftClickedPosition = hit.point;
         }
+        else
+        {
+            _leftClicked = false;
+        }
+
+        OnInputReceived();
     }
 
     public override void OnInputReceived()
@@ -53,9 +55,9 @@ public class ColliderInputReceiver : InputReceiver
             
             inputHandler.ProcessInput(_hoveredPosition, IInputHandler.InputType.Hover);
             
-            if (_clickedPosition.HasValue)
+            if (_leftClicked)
             {
-                inputHandler.ProcessInput(_clickedPosition.Value, IInputHandler.InputType.LeftClick);
+                inputHandler.ProcessInput(_leftClickedPosition, IInputHandler.InputType.LeftClick);
             }
         }
     }
