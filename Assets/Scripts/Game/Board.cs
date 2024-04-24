@@ -203,6 +203,7 @@ public class Board : MonoBehaviour
     private void SelectToken(Token token)
     {
         _selectedToken = token;
+        _controller.SelectToken(token);
         _selectedToken.SelectAvailableSquares();
         var moves = _selectedToken.availableMoves;
         ShowAvailableMovesSquares(moves);
@@ -235,6 +236,7 @@ public class Board : MonoBehaviour
 
     private void DeselectToken()
     {
+        _controller.DeselectToken(_selectedToken);
         _selectedToken = null;
         _squareSelector.ClearAvailableMoves();
     }

@@ -9,6 +9,7 @@ public class TokenCreator : MonoBehaviour
     [SerializeField] private GameObject[] tokenPrefabs;
     [SerializeField] private Material blackMaterial;
     [SerializeField] private Material whiteMaterial;
+    [SerializeField] private Material selectedMaterial;
 
     private readonly Dictionary<string, GameObject> _namesToTokens = new();
 
@@ -32,5 +33,10 @@ public class TokenCreator : MonoBehaviour
     public Material GetTeamMaterial(TeamColour colour)
     {
         return colour == TeamColour.White ? whiteMaterial : blackMaterial;
+    }
+    
+    public Material GetSelectedTokenMaterial()
+    {
+        return selectedMaterial;
     }
 }

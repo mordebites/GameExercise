@@ -114,6 +114,16 @@ public class GameController : MonoBehaviour
         player.AddToken(newToken);
     }
 
+    public void SelectToken(Token token)
+    {
+        token.SetMaterial(_tokenCreator.GetSelectedTokenMaterial());
+    }
+
+    public void DeselectToken(Token token)
+    {
+        token.SetMaterial(_tokenCreator.GetTeamMaterial(token.Team));
+    }
+
     public bool IsTeamTurnActive(TeamColour tokenTeam)
     {
         return tokenTeam == activePlayer.team;
