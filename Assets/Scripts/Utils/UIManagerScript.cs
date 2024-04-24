@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using JetBrains.Annotations;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 using GameObject = UnityEngine.GameObject;
 
@@ -45,8 +45,6 @@ struct Topic
 struct Entry
 {
     public string name;
-
-    //TODO
     public string image;
     public string text;
 
@@ -76,15 +74,35 @@ public class UIManagerScript : MonoBehaviour
     private SelectedCodexSections _selectedCodexSections;
 
     //UI sections and elements references
-    private GameObject _gameSection;
-    private TextMeshProUGUI _titleSectionText;
+    [SerializeField] private GameObject gameSection;
+    [SerializeField] private GameObject codexSection;
+    [SerializeField] private GameObject topicsSection;
+    [SerializeField] private GameObject entrySection;
+    [SerializeField] private GameObject categoriesSection;
+    [SerializeField] private GameObject entryNavSection;
+    [SerializeField] private GameObject tokenInfoPanel;
+    [SerializeField] private GameObject actionButtons;
 
-    public GameObject codexSection;
-    public GameObject topicsSection;
-    public GameObject entrySection;
-    public GameObject topicsSectionPrefab;
-    public GameObject codexEntryButtonPrefab;
-    public TextMeshProUGUI winnerTextComponent;
+    [SerializeField] private TextMeshProUGUI titleSectionText;
+    [SerializeField] private TextMeshProUGUI winnerTextComponent;
+    [SerializeField] private TextMeshProUGUI tokenHealthText;
+    [SerializeField] private TextMeshProUGUI tokenAttackText;
+    [SerializeField] private TextMeshProUGUI tokenDefenceText;
+    [SerializeField] private TextMeshProUGUI actionPointsText;
+    [SerializeField] private TextMeshProUGUI currentTurnText;
+    [SerializeField] private TextMeshProUGUI currentPlayerText;
+    [SerializeField] private TextMeshProUGUI entryText;
+
+    [SerializeField] private Image entryImage;
+    
+    [SerializeField] private Toggle backNavToggle;
+
+    //camera
+    [SerializeField] private Camera cameraMain;
+    
+    //UI prefabs
+    [SerializeField] private GameObject topicSectionPrefab;
+    [SerializeField] private GameObject codexEntryButtonPrefab;
 
     //UI element interaction events
     public UnityEvent moveButtonPressed;
@@ -93,20 +111,6 @@ public class UIManagerScript : MonoBehaviour
 
     private void Awake()
     {
-        _gameSection = GetGameSectionObject();
-        if (!_gameSection)
-        {
-            Debug.LogError("Could not find codex section title");
-            return;
-        }
-
-        _titleSectionText = GetTitleSectionText();
-        if (!_titleSectionText)
-        {
-            Debug.LogError("Could not find codex section title");
-            return;
-        }
-
         var codex = LoadCodexData();
         if (codex?.categories == null)
         {
@@ -118,19 +122,6 @@ public class UIManagerScript : MonoBehaviour
 
         SetupCodexCategoryToggles();
         LoadCategory(0);
-    }
-
-    private GameObject GetGameSectionObject()
-    {
-        var canvas = gameObject.scene.GetRootGameObjects().First(o => o.name == "Canvas");
-        return canvas.transform.Find("GameSection").gameObject;
-    }
-
-    private TextMeshProUGUI GetTitleSectionText()
-    {
-        var codexTitleSection = codexSection.transform.Find("TitleSection");
-        var textSection = codexTitleSection?.Find("TitleText").gameObject;
-        return textSection?.GetComponent<TextMeshProUGUI>();
     }
 
     private static Codex? LoadCodexData()
@@ -155,17 +146,11 @@ public class UIManagerScript : MonoBehaviour
 
     private void SetupCodexCategoryToggles()
     {
-        var navigationSectionTransform = codexSection.transform.Find("NavigationSection");
-        if (navigationSectionTransform == null)
-        {
-            Debug.LogError("Could not find category section");
-            return;
-        }
-
+        //TODO create toggles based on codex
         for (var i = 0; i < _codex.categories.Count; i++)
         {
             var category = _codex.categories[i];
-            var toggleTransform = navigationSectionTransform.Find("CategoriesSection").Find(category.name + "Toggle");
+            var toggleTransform = categoriesSection.transform.Find(category.name + "Toggle");
             if (!toggleTransform)
             {
                 Debug.LogError($"Could not find toggle for category {category.name}");
@@ -192,18 +177,15 @@ public class UIManagerScript : MonoBehaviour
             return;
         }
 
+        //get category from codex
         var codexCategory = _codex.categories[categoryIndex];
         _selectedCodexSections.category = codexCategory.name;
-        _titleSectionText.text = codexCategory.name;
-
-        var topicsSectionTransform = topicsSection.transform;
-        if (!topicsSectionTransform)
-        {
-            Debug.LogError("Could not find topics section");
-            return;
-        }
+        
+        //set category name as title
+        titleSectionText.text = codexCategory.name;
 
         //empty topics section
+        var topicsSectionTransform = topicsSection.transform;
         var count = topicsSectionTransform.childCount;
         for (var i = 0; i < count; i++)
         {
@@ -222,7 +204,7 @@ public class UIManagerScript : MonoBehaviour
 
     private void SetupCodexTopic(Transform topicsSectionTransform, Topic topic)
     {
-        var topicSection = Instantiate(topicsSectionPrefab, topicsSectionTransform, true);
+        var topicSection = Instantiate(topicSectionPrefab, topicsSectionTransform, true);
         var topicToggleTransform = topicSection.transform.Find("TopicToggle");
 
         var toggleText = topicToggleTransform.Find("Text");
@@ -250,12 +232,12 @@ public class UIManagerScript : MonoBehaviour
         GameObject button =
             Instantiate(codexEntryButtonPrefab, entriesSection.transform, false);
 
-        var entryText = button.transform.Find("Text");
-        var textElem = entryText.GetComponent<TextMeshProUGUI>();
+        var textComponent = button.transform.Find("Text");
+        var textElem = textComponent.GetComponent<TextMeshProUGUI>();
         textElem.text = entry.name;
 
-        var component = button.GetComponent<Button>();
-        component.onClick.AddListener(delegate { EntryButtonClicked(entry.name); });
+        var buttonComponent = button.GetComponent<Button>();
+        buttonComponent.onClick.AddListener(delegate { EntryButtonClicked(entry.name); });
     }
 
     public void OnMoveButtonPressed()
@@ -283,68 +265,54 @@ public class UIManagerScript : MonoBehaviour
 
     public void HideWinnerText()
     {
-        var textTransform = _gameSection.transform.Find("WinnerText");
-        textTransform.gameObject.SetActive(false);
+        winnerTextComponent.gameObject.SetActive(false);
     }
 
     public void HideTokenInfoPanel()
     {
-        var tokenInfoPanelTransform = _gameSection.transform.Find("TokenInfoPanel");
-        tokenInfoPanelTransform.gameObject.SetActive(false);
+        tokenInfoPanel.SetActive(false);
     }
 
     public void ShowTokenInfoPanel(Vector3 position, int health, int attack, int defence)
     {
-        var tokenInfoPanelTransform = _gameSection.transform.Find("TokenInfoPanel");
+        //TODO refactor
+        tokenHealthText.text = "Health: " + health;
+        tokenAttackText.text = "Attack: " + attack;
+        tokenDefenceText.text = "Defence: " + defence;
 
-        //TODO improve
-        var healthText = tokenInfoPanelTransform.Find("HealthText").GetComponent<TextMeshProUGUI>();
-        healthText.text = "Health: " + health;
-
-        var attackText = tokenInfoPanelTransform.Find("AttackText").GetComponent<TextMeshProUGUI>();
-        attackText.text = "Attack: " + attack;
-
-        var defenceText = tokenInfoPanelTransform.Find("DefenceText").GetComponent<TextMeshProUGUI>();
-        defenceText.text = "Defence: " + defence;
-
-        var pos = Camera.main.WorldToScreenPoint(position);
-        tokenInfoPanelTransform.position = pos;
-        tokenInfoPanelTransform.gameObject.SetActive(true);
+        var screenPosition = cameraMain.WorldToScreenPoint(position);
+        tokenInfoPanel.transform.position = screenPosition;
+        tokenInfoPanel.SetActive(true);
     }
 
     public void UpdateActionPoints(int newPoints)
     {
-        var textComponent = _gameSection.transform.Find("ActionPointsText").GetComponent<TextMeshProUGUI>();
-        //TODO improve
-        textComponent.text = "Action points: " + newPoints;
+        //TODO refactor
+        actionPointsText.text = "Action points: " + newPoints;
     }
 
     public void UpdateTurnCounter(int newCounter)
     {
-        var textComponent = _gameSection.transform.Find("TurnText").GetComponent<TextMeshProUGUI>();
         //TODO improve
-        textComponent.text = "Turn: " + newCounter;
+        currentTurnText.text = "Turn: " + newCounter;
     }
 
     public void UpdateCurrentPlayer(string currentPlayer)
     {
-        var textComponent = _gameSection.transform.Find("PlayerText").GetComponent<TextMeshProUGUI>();
         //TODO improve
-        textComponent.text = "Player: " + currentPlayer;
+        currentPlayerText.text = "Player: " + currentPlayer;
     }
 
     public void ShowActionButtonsAtPosition(Vector3 position)
     {
-        var buttonsTransform = _gameSection.transform.Find("ActionButtons");
-        var pos = Camera.main.WorldToScreenPoint(position);
-        buttonsTransform.position = pos;
-        buttonsTransform.gameObject.SetActive(true);
+        var screenPosition = cameraMain.WorldToScreenPoint(position);
+        actionButtons.transform.position = screenPosition;
+        actionButtons.SetActive(true);
     }
 
     public void HideActionButtons()
     {
-        var buttonsTransform = _gameSection.transform.Find("ActionButtons");
-        buttonsTransform.gameObject.SetActive(false);
+        actionButtons.SetActive(false);
     }
 
     public void CodexToggleChanged(Toggle change)
@@ -374,43 +342,29 @@ public class UIManagerScript : MonoBehaviour
 
     private void EntryButtonClicked(string entryName)
     {
-        var topicsSectionTransform = topicsSection.transform;
-        if (!topicsSectionTransform)
-        {
-            Debug.LogError("Could not find topics section");
-            return;
-        }
-
-        topicsSectionTransform.gameObject.SetActive(false);
-        var entrySectionTransform = entrySection.transform;
+        topicsSection.gameObject.SetActive(false);
 
         var category = _codex.categories.Find(cat => cat.name == _selectedCodexSections.category);
         var topic = category.topics.Find(topic => topic.name == _selectedCodexSections.topic);
         var entry = topic.entries.Find(entry => entry.name == entryName);
 
-        _titleSectionText.text = entry.name;
-
-        var textComponent = entrySectionTransform.Find("Text").GetComponent<TextMeshProUGUI>();
-        textComponent.text = entry.text;
-
-        var imageComponent = entrySectionTransform.Find("Image").GetComponent<Image>();
+        titleSectionText.text = entry.name;
+        entryText.text = entry.text;
+        
         var result = LoadImage(entry.image, out Texture2D tex);
         if (result)
         {
-            imageComponent.sprite =
+            entryImage.sprite =
                 Sprite.Create(tex, new Rect(0.0f, 0.0f, tex.width, tex.height), new Vector2(0.5f, 0.5f));
         }
-
-        var navSectionTransform = codexSection.transform.Find("NavigationSection");
-        navSectionTransform.Find("CategoriesSection").gameObject.SetActive(false);
-        var entryNavSectionTransform = navSectionTransform.Find("EntryNavSection");
-        entryNavSectionTransform.gameObject.SetActive(true);
-
-        var backNavToggle = entryNavSectionTransform.Find("BackNavToggle").GetComponent<Toggle>();
+        
+        categoriesSection.SetActive(false);
+        entryNavSection.SetActive(true);
+        
         backNavToggle.onValueChanged.AddListener(delegate { OnBackNavToggle(); });
 
         _selectedCodexSections.entry = entry.name;
-        entrySectionTransform.gameObject.SetActive(true);
+        entrySection.SetActive(true);
     }
 
     private static bool LoadImage(string path, out Texture2D texture)
@@ -434,17 +388,8 @@ public class UIManagerScript : MonoBehaviour
 
     private void OnBackNavToggle()
     {
-        var topicsSectionTransform = topicsSection.transform;
-        if (!topicsSectionTransform)
-        {
-            Debug.LogError("Could not find topics section");
-            return;
-        }
-
-        topicsSectionTransform.gameObject.SetActive(true);
-
-        var entrySectionTransform = entrySection.transform;
-        entrySectionTransform.gameObject.SetActive(false);
+        topicsSection.SetActive(true);
+        entrySection.SetActive(false);
 
         //TODO refactor logic to get category
         var categoryToIndex =
@@ -457,10 +402,8 @@ public class UIManagerScript : MonoBehaviour
         //TODO not working
         TopicToggleChanged(categoryToIndex.Key);
 
-        var navSectionTransform = codexSection.transform.Find("NavigationSection");
-        navSectionTransform.Find("CategoriesSection").gameObject.SetActive(true);
-        var entryNavSectionTransform = navSectionTransform.Find("EntryNavSection");
-        entryNavSectionTransform.gameObject.SetActive(false);
+        categoriesSection.SetActive(true);
+        entryNavSection.SetActive(false);
     }
 
     private static string ReadFile(string path)
