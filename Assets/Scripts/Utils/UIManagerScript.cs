@@ -5,6 +5,7 @@ using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.Pool;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
 using GameObject = UnityEngine.GameObject;
@@ -58,7 +59,7 @@ struct Entry
     }
 }
 
-struct CurrentSections
+struct SelectedCodexSections
 {
     public string category;
     public string topic;
@@ -67,49 +68,93 @@ struct CurrentSections
 
 public class UIManagerScript : MonoBehaviour
 {
+    //codex contents
     private const string CodexPath = "./Assets/Data/codex.json";
+    private Codex _codex;
 
-    private TextMeshProUGUI _titleSectionText;
     private readonly Dictionary<Toggle, GameObject> _topicTogglesToEntrySections = new();
     private readonly Dictionary<Toggle, int> _categoryTogglesToCategoryIndices = new();
-    private Codex _codex;
-    private CurrentSections _currentSections;
+    private SelectedCodexSections _selectedCodexSections;
+
+    //UI sections and elements references
     private GameObject _gameSection;
+    private TextMeshProUGUI _titleSectionText;
 
     public GameObject codexSection;
     public GameObject topicsSectionPrefab;
+    public GameObject codexEntryButtonPrefab;
+    public TextMeshProUGUI winnerTextComponent;
 
+    //UI element interaction events
     public UnityEvent moveButtonPressed;
     public UnityEvent defendButtonPressed;
     public UnityEvent endTurnButtonPressed;
 
     private void Awake()
     {
-        _gameSection = gameObject.scene.GetRootGameObjects()
-            .First(o => o.name == "Canvas")
-            .transform.Find("GameSection").gameObject;
-        var codexTitleSection = codexSection.transform.Find("TitleSection");
-        var textSection = codexTitleSection?.Find("TitleText").gameObject;
-        _titleSectionText = textSection?.GetComponent<TextMeshProUGUI>();
+        _gameSection = GetGameSectionObject();
+        if (!_gameSection)
+        {
+            Debug.LogError("Could not find codex section title");
+            return;
+        }
 
+        _titleSectionText = GetTitleSectionText();
         if (!_titleSectionText)
         {
             Debug.LogError("Could not find codex section title");
             return;
         }
 
-        //TODO handle parsing errors
-        var jsonCodex = ReadFile(CodexPath);
-        _codex = JsonUtility.FromJson<Codex>(jsonCodex);
-
-        if (_codex.categories == null)
+        var codex = LoadCodexData();
+        if (codex?.categories == null)
         {
             Debug.LogError("Could not find categories in parsed codex");
             return;
         }
+        _codex = codex.Value;
 
+        SetupCodexCategoryToggles();
+        LoadCategory(0);
+    }
+
+    private GameObject GetGameSectionObject()
+    {
+        var canvas = gameObject.scene.GetRootGameObjects().First(o => o.name == "Canvas");
+        return canvas.transform.Find("GameSection").gameObject;
+    }
+
+    private TextMeshProUGUI GetTitleSectionText()
+    {
+        var codexTitleSection = codexSection.transform.Find("TitleSection");
+        var textSection = codexTitleSection?.Find("TitleText").gameObject;
+        return textSection?.GetComponent<TextMeshProUGUI>();
+    }
+
+    private static Codex? LoadCodexData()
+    {
+        var jsonCodex = ReadFile(CodexPath);
+        if (string.IsNullOrEmpty(jsonCodex))
+        {
+            throw new FormatException("Could not read codex json");
+        }
+
+        try
+        {
+            return JsonUtility.FromJson<Codex>(jsonCodex);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError(exception);
+        }
+
+        return null;
+    }
+
+    private void SetupCodexCategoryToggles()
+    {
         var navigationSectionTransform = codexSection.transform.Find("NavigationSection");
-        if (!navigationSectionTransform)
+        if (navigationSectionTransform == null)
         {
             Debug.LogError("Could not find category section");
             return;
@@ -133,18 +178,20 @@ public class UIManagerScript : MonoBehaviour
             }
 
             _categoryTogglesToCategoryIndices.Add(toggle, i);
-
             toggle.onValueChanged.AddListener(delegate { CategoryToggleChanged(toggle); });
         }
-
-        LoadCategory(0);
     }
 
     private void LoadCategory(int categoryIndex)
     {
-        //TODO check index
+        if (categoryIndex >= _codex.categories.Count)
+        {
+            Debug.LogError("Category index out of range");
+            return;
+        }
+
         var codexCategory = _codex.categories[categoryIndex];
-        _currentSections.category = codexCategory.name;
+        _selectedCodexSections.category = codexCategory.name;
         _titleSectionText.text = codexCategory.name;
 
         var topicsSectionTransform = codexSection.transform.Find("MainSection").Find("TopicsSection");
@@ -165,49 +212,48 @@ public class UIManagerScript : MonoBehaviour
             Destroy(childTransform.gameObject);
         }
 
-        //populate topics section based on codex
         foreach (var topic in codexCategory.topics)
         {
-            var newSection = Instantiate(topicsSectionPrefab, topicsSectionTransform, true);
-            var topicToggle = newSection.transform.Find("TopicToggle");
-            var toggleText = topicToggle.Find("Text");
-            var text = toggleText.GetComponent<TextMeshProUGUI>();
-
-            text.text = topic.name;
-
-            var entriesSection = newSection.transform.Find("EntriesSection");
-            var entryButton = entriesSection.Find("EntryButton");
-
-            var toggle = topicToggle.gameObject.GetComponent<Toggle>();
-            if (!_topicTogglesToEntrySections.ContainsKey(toggle))
-            {
-                _topicTogglesToEntrySections.Add(toggle, entriesSection.gameObject);
-            }
-
-            toggle.onValueChanged.AddListener(delegate { TopicToggleChanged(toggle); });
-
-            var first = true;
-
-            foreach (var entry in topic.entries)
-            {
-                GameObject button = entryButton.gameObject;
-                if (first)
-                {
-                    first = false;
-                }
-                else
-                {
-                    button = Instantiate(button, entriesSection, false);
-                }
-
-                var entryText = button.transform.Find("Text");
-                var textElem = entryText.GetComponent<TextMeshProUGUI>();
-                textElem.text = entry.name;
-
-                var component = button.GetComponent<Button>();
-                component.onClick.AddListener(delegate { EntryButtonClicked(entry.name); });
-            }
+            SetupCodexTopic(topicsSectionTransform, topic);
         }
+    }
+
+    private void SetupCodexTopic(Transform topicsSectionTransform, Topic topic)
+    {
+        var topicSection = Instantiate(topicsSectionPrefab, topicsSectionTransform, true);
+        var topicToggleTransform = topicSection.transform.Find("TopicToggle");
+
+        var toggleText = topicToggleTransform.Find("Text");
+        var textComponent = toggleText.GetComponent<TextMeshProUGUI>();
+        textComponent.text = topic.name;
+
+        var toggleComponent = topicToggleTransform.gameObject.GetComponent<Toggle>();
+        var entriesSection = topicSection.transform.Find("EntriesSection");
+        if (!_topicTogglesToEntrySections.ContainsKey(toggleComponent))
+        {
+            _topicTogglesToEntrySections.Add(toggleComponent,
+                entriesSection.gameObject);
+        }
+
+        toggleComponent.onValueChanged.AddListener(delegate { TopicToggleChanged(toggleComponent); });
+
+        foreach (var entry in topic.entries)
+        {
+            SetupCodexEntry(entriesSection, entry);
+        }
+    }
+
+    private void SetupCodexEntry(Transform entriesSection, Entry entry)
+    {
+        GameObject button =
+            Instantiate(codexEntryButtonPrefab, entriesSection.transform, false);
+
+        var entryText = button.transform.Find("Text");
+        var textElem = entryText.GetComponent<TextMeshProUGUI>();
+        textElem.text = entry.name;
+
+        var component = button.GetComponent<Button>();
+        component.onClick.AddListener(delegate { EntryButtonClicked(entry.name); });
     }
 
     public void OnMoveButtonPressed()
@@ -229,12 +275,8 @@ public class UIManagerScript : MonoBehaviour
 
     public void ShowWinnerText(string winner)
     {
-        var textTransform = _gameSection.transform.Find("WinnerText");
-        var textComponent = textTransform.GetComponent<TextMeshProUGUI>();
-        
-        //TODO improve
-        textComponent.text = winner + " wins!";
-        textTransform.gameObject.SetActive(true);
+        winnerTextComponent.text = winner + " wins!";
+        winnerTextComponent.gameObject.SetActive(true);
     }
 
     public void HideWinnerText()
@@ -256,13 +298,13 @@ public class UIManagerScript : MonoBehaviour
         //TODO improve
         var healthText = tokenInfoPanelTransform.Find("HealthText").GetComponent<TextMeshProUGUI>();
         healthText.text = "Health: " + health;
-        
+
         var attackText = tokenInfoPanelTransform.Find("AttackText").GetComponent<TextMeshProUGUI>();
         attackText.text = "Attack: " + attack;
-        
+
         var defenceText = tokenInfoPanelTransform.Find("DefenceText").GetComponent<TextMeshProUGUI>();
         defenceText.text = "Defence: " + defence;
-        
+
         var pos = Camera.main.WorldToScreenPoint(position);
         tokenInfoPanelTransform.position = pos;
         tokenInfoPanelTransform.gameObject.SetActive(true);
@@ -305,7 +347,6 @@ public class UIManagerScript : MonoBehaviour
 
     public void CodexToggleChanged(Toggle change)
     {
-        Debug.Log("toggle:" + change.isOn);
         codexSection.SetActive(!codexSection.activeSelf);
     }
 
@@ -316,7 +357,7 @@ public class UIManagerScript : MonoBehaviour
         if (!found || !section) return;
 
         var textComponent = toggle.transform.Find("Text").GetComponent<TextMeshProUGUI>();
-        _currentSections.topic = textComponent.text;
+        _selectedCodexSections.topic = textComponent.text;
         section.SetActive(!section.activeSelf);
     }
 
@@ -344,8 +385,8 @@ public class UIManagerScript : MonoBehaviour
 
         var entrySectionTransform = mainSectionTransform.Find("EntrySection");
 
-        var category = _codex.categories.Find(cat => cat.name == _currentSections.category);
-        var topic = category.topics.Find(topic => topic.name == _currentSections.topic);
+        var category = _codex.categories.Find(cat => cat.name == _selectedCodexSections.category);
+        var topic = category.topics.Find(topic => topic.name == _selectedCodexSections.topic);
         var entry = topic.entries.Find(entry => entry.name == entryName);
 
         _titleSectionText.text = entry.name;
@@ -362,7 +403,7 @@ public class UIManagerScript : MonoBehaviour
         var backNavToggle = entryNavSectionTransform.Find("BackNavToggle").GetComponent<Toggle>();
         backNavToggle.onValueChanged.AddListener(delegate { OnBackNavToggle(); });
 
-        _currentSections.entry = entry.name;
+        _selectedCodexSections.entry = entry.name;
         entrySectionTransform.gameObject.SetActive(true);
     }
 
@@ -382,10 +423,10 @@ public class UIManagerScript : MonoBehaviour
         entrySectionTransform.gameObject.SetActive(false);
 
         //TODO refactor logic to get category
-        var categoryToIndex = _categoryTogglesToCategoryIndices.First(pair =>
-        {
-            return pair.Key.name.Replace("Toggle", "") == _currentSections.category;
-        });
+        var categoryToIndex =
+            _categoryTogglesToCategoryIndices.First(
+                pair => pair.Key.name.Replace("Toggle", "") == _selectedCodexSections.category
+            );
 
         LoadCategory(categoryToIndex.Value);
 
@@ -400,9 +441,22 @@ public class UIManagerScript : MonoBehaviour
 
     private static string ReadFile(string path)
     {
-        using StreamReader stream = new StreamReader(path);
-        var fileContents = stream.ReadToEnd();
-        stream.Close();
+        var fileContents = "";
+        StreamReader stream = null;
+        try
+        {
+            stream = new StreamReader(path);
+            fileContents = stream.ReadToEnd();
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError(exception);
+        }
+        finally
+        {
+            stream?.Dispose();
+        }
+
         return fileContents;
     }
 }

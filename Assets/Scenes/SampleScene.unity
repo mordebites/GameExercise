@@ -2604,6 +2604,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   codexSection: {fileID: 1498977376}
   topicsSectionPrefab: {fileID: 8576129133705943480, guid: e25b83270ecf57aaebb6635845a60b59, type: 3}
+  codexEntryButtonPrefab: {fileID: 5072289787066474692, guid: eca9ac26b4a07dafb8d0e049e8dc345c, type: 3}
+  winnerTextComponent: {fileID: 795662521}
   moveButtonPressed:
     m_PersistentCalls:
       m_Calls: []
