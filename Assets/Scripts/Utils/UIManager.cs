@@ -5,7 +5,6 @@ using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
-using UnityEngine.Serialization;
 using UnityEngine.UI;
 using GameObject = UnityEngine.GameObject;
 
@@ -99,6 +98,8 @@ public class UIManager : MonoBehaviour
 
     [SerializeField] private GameObject topicsScrollView;
     [SerializeField] private GameObject entryScrollView;
+
+    [SerializeField] private Canvas codexCanvas;
     
     //camera
     [SerializeField] private Camera cameraMain;
@@ -124,7 +125,6 @@ public class UIManager : MonoBehaviour
         _codex = codex.Value;
 
         SetupCodexCategoryToggles();
-        LoadCategory(0);
     }
 
     private static Codex? LoadCodexData()
@@ -320,7 +320,12 @@ public class UIManager : MonoBehaviour
 
     public void CodexToggleChanged(Toggle change)
     {
-        codexSection.SetActive(!codexSection.activeSelf);
+        codexCanvas.gameObject.SetActive(change.isOn);
+
+        if (change.isOn)
+        {
+            LoadCategory(0);
+        }
     }
 
     private void TopicToggleChanged(Toggle toggle)
