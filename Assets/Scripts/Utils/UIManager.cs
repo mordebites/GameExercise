@@ -92,6 +92,8 @@ public class UIManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI currentPlayerText;
     [SerializeField] private TextMeshProUGUI entryText;
 
+    [SerializeField] private Button endTurnButton;
+    
     [SerializeField] private Image entryImage;
     
     [SerializeField] private Toggle backNavToggle;
@@ -112,6 +114,7 @@ public class UIManager : MonoBehaviour
     public UnityEvent moveButtonPressed;
     public UnityEvent defendButtonPressed;
     public UnityEvent endTurnButtonPressed;
+    public UnityEvent<bool> codexToggleChanged;
 
     private void Awake()
     {
@@ -314,11 +317,13 @@ public class UIManager : MonoBehaviour
         actionButtons.SetActive(false);
     }
 
-    public void CodexToggleChanged(Toggle change)
+    public void CodexToggleChanged(Toggle toggle)
     {
-        codexCanvas.gameObject.SetActive(change.isOn);
+        codexToggleChanged.Invoke(toggle.isOn);
+        endTurnButton.interactable = !toggle.isOn;
+        codexCanvas.gameObject.SetActive(toggle.isOn);
 
-        if (change.isOn)
+        if (toggle.isOn)
         {
             LoadCategory(0);
         }

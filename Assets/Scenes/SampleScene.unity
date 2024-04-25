@@ -4031,6 +4031,7 @@ MonoBehaviour:
   currentTurnText: {fileID: 2009378191}
   currentPlayerText: {fileID: 2116773711}
   entryText: {fileID: 1569542668}
+  endTurnButton: {fileID: 263476021}
   entryImage: {fileID: 968999486}
   backNavToggle: {fileID: 1136602372}
   topicsScrollView: {fileID: 1029807341}
@@ -4046,6 +4047,9 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   endTurnButtonPressed:
+    m_PersistentCalls:
+      m_Calls: []
+  codexToggleChanged:
     m_PersistentCalls:
       m_Calls: []
 --- !u!4 &1142513636
@@ -4284,6 +4288,7 @@ MonoBehaviour:
   startingBoardLayout: {fileID: 11400000, guid: 495d2ea8c510002f498adb2ca4f4d883, type: 2}
   tokenSetStats: {fileID: 11400000, guid: e29be31b7eaad4e429d94a3ae2e962b2, type: 2}
   board: {fileID: 154889366}
+  uiManager: {fileID: 1142513635}
 --- !u!114 &1278665312
 MonoBehaviour:
   m_ObjectHideFlags: 0

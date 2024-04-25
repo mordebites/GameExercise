@@ -3,6 +3,7 @@ using System.Linq;
 using Enums;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 [RequireComponent(typeof(TokenCreator))]
 public class GameController : MonoBehaviour
@@ -11,6 +12,7 @@ public class GameController : MonoBehaviour
     {
         Init,
         Play,
+        Paused,
         Finished
     }
 
@@ -19,7 +21,7 @@ public class GameController : MonoBehaviour
     [SerializeField] private BoardLayout startingBoardLayout;
     [SerializeField] private TokenSetStats tokenSetStats;
     [SerializeField] private Board board;
-    private UIManager _uiManager;
+    [SerializeField] UIManager uiManager;
     private TokenCreator _tokenCreator;
 
     private Player _whitePlayer;
@@ -41,10 +43,6 @@ public class GameController : MonoBehaviour
     {
         _whitePlayer = new Player(TeamColour.White, board);
         _blackPlayer = new Player(TeamColour.Black, board);
-
-        var uiManagerObject = gameObject.scene.GetRootGameObjects()
-            .First(o => o.name == "UIManager");
-        _uiManager = uiManagerObject.GetComponent<UIManager>();
     }
 
     void Start()
@@ -59,9 +57,10 @@ public class GameController : MonoBehaviour
         UpdateActionPoints(MaxActionPointsPerTurn);
         ChangeActiveTeam(_whitePlayer);
 
-        _uiManager.endTurnButtonPressed.AddListener(OnEndTurnButtonPressed);
+        uiManager.endTurnButtonPressed.AddListener(OnEndTurnButtonPressed);
+        uiManager.codexToggleChanged.AddListener(OnCodexToggleChanged);
         
-        board.SetDependencies(this, _uiManager);
+        board.SetDependencies(this, uiManager);
         CreateTokensFromLayoutAndStats(startingBoardLayout, tokenSetStats);
         _state = GameState.Play;
     }
@@ -71,16 +70,21 @@ public class GameController : MonoBehaviour
         EndTurn();
     }
 
+    private void OnCodexToggleChanged(bool isOn)
+    {
+        SetGamePaused(isOn);
+    }
+
     private void UpdateActionPoints(int newPoints)
     {
         _currentPlayerActionPoints = newPoints;
-        _uiManager.UpdateActionPoints(_currentPlayerActionPoints);
+        uiManager.UpdateActionPoints(_currentPlayerActionPoints);
     }
 
     private void UpdateTurnCounter(int newCounter)
     {
         _turnCounter = newCounter;
-        _uiManager.UpdateTurnCounter(newCounter);
+        uiManager.UpdateTurnCounter(newCounter);
     }
 
     public bool IsGameInProgress()
@@ -124,6 +128,16 @@ public class GameController : MonoBehaviour
 
         var player = team == TeamColour.Black ? _blackPlayer : _whitePlayer;
         player.AddToken(newToken);
+    }
+
+    public void SetGamePaused(bool shouldPause)
+    {
+        _state = _state switch
+        {
+            GameState.Play when shouldPause => GameState.Paused,
+            GameState.Paused when !shouldPause => GameState.Play,
+            _ => _state
+        };
     }
 
     public void SelectToken(Token token)
@@ -186,7 +200,7 @@ public class GameController : MonoBehaviour
         _state = GameState.Finished;
 
         var winner = _whitePlayer.activeTokens.Count > 0 ? _whitePlayer : _blackPlayer;
-        _uiManager.ShowWinnerText(winner.team.ToString());
+        uiManager.ShowWinnerText(winner.team.ToString());
     }
 
     private void ChangeActiveTeam(Player player)
@@ -194,7 +208,7 @@ public class GameController : MonoBehaviour
         ActivePlayer = player;
         UpdateActionPoints(MaxActionPointsPerTurn);
         
-        _uiManager.UpdateCurrentPlayer(ActivePlayer.team.ToString());
+        uiManager.UpdateCurrentPlayer(ActivePlayer.team.ToString());
     }
 
     private Player GetOpponent(Player player)
