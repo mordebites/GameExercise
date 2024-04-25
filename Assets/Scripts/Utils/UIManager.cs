@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.Pool;
@@ -110,6 +111,7 @@ public class UIManager : MonoBehaviour
     //UI prefabs
     [SerializeField] private GameObject topicSectionPrefab;
     [SerializeField] private GameObject codexEntryButtonPrefab;
+    [SerializeField] private GameObject codexTogglePrefab;
 
     //pools
     private ObjectPool<GameObject> _topicSectionPool;
@@ -204,26 +206,19 @@ public class UIManager : MonoBehaviour
 
     private void SetupCodexCategoryToggles()
     {
-        //TODO create toggles based on codex
         for (var i = 0; i < _codex.categories.Count; i++)
         {
             var category = _codex.categories[i];
-            var toggleTransform = categoriesSection.transform.Find(category.name + "Toggle");
-            if (!toggleTransform)
-            {
-                Debug.LogError($"Could not find toggle for category {category.name}");
-                return;
-            }
-
-            var toggle = toggleTransform.GetComponent<Toggle>();
-            if (!toggle)
-            {
-                Debug.LogError($"Could not find toggle component for category {category.name}");
-                return;
-            }
-
-            _categoryTogglesToCategoryIndices.Add(toggle, i);
-            toggle.onValueChanged.AddListener(delegate { CategoryToggleChanged(toggle); });
+            var toggle = Instantiate(codexTogglePrefab, categoriesSection.transform, false);
+            toggle.SetActive(true);
+            toggle.name = category.name + "Toggle";
+            
+            var textComponent = toggle.transform.Find("Background").Find("Text").GetComponent<TextMeshProUGUI>();
+            textComponent.text = category.name;
+            
+            var toggleComponent = toggle.GetComponent<Toggle>();
+            _categoryTogglesToCategoryIndices.Add(toggleComponent, i);
+            toggleComponent.onValueChanged.AddListener(delegate { CategoryToggleChanged(toggleComponent); });
         }
     }
 
@@ -397,6 +392,7 @@ public class UIManager : MonoBehaviour
 
     public void CodexToggleChanged(Toggle toggle)
     {
+        Debug.Log("CodexToggleChanged");
         codexToggleChanged.Invoke(toggle.isOn);
         endTurnButton.interactable = !toggle.isOn;
         codexCanvas.gameObject.SetActive(toggle.isOn);
