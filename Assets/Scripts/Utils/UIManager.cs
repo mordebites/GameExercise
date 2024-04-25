@@ -5,6 +5,8 @@ using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.Pool;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 using GameObject = UnityEngine.GameObject;
 
@@ -57,9 +59,8 @@ struct Entry
 
 struct SelectedCodexSections
 {
-    public string category;
-    public string topic;
-    public string entry;
+    public string Category;
+    public string Topic;
 }
 
 public class UIManager : MonoBehaviour
@@ -75,7 +76,7 @@ public class UIManager : MonoBehaviour
     //UI sections and elements references
     [SerializeField] private GameObject gameSection;
     [SerializeField] private GameObject codexSection;
-    [SerializeField] private GameObject topicsSection;
+    [FormerlySerializedAs("topicsSection")] [SerializeField] private GameObject topicContainerSection;
     [SerializeField] private GameObject entrySection;
     [SerializeField] private GameObject categoriesSection;
     [SerializeField] private GameObject entryNavSection;
@@ -110,6 +111,10 @@ public class UIManager : MonoBehaviour
     [SerializeField] private GameObject topicSectionPrefab;
     [SerializeField] private GameObject codexEntryButtonPrefab;
 
+    //pools
+    private ObjectPool<GameObject> topicSectionPool;
+    private ObjectPool<GameObject> entrySectionPool;
+    
     //UI element interaction events
     public UnityEvent moveButtonPressed;
     public UnityEvent defendButtonPressed;
@@ -118,6 +123,40 @@ public class UIManager : MonoBehaviour
 
     private void Awake()
     {
+        topicSectionPool = new ObjectPool<GameObject>(
+            () => Instantiate(topicSectionPrefab, topicContainerSection.transform, true),
+            section => section.SetActive(true),
+            section =>
+            {
+                section.SetActive(false);
+                var entriesSection = section.transform.Find("EntriesSection");
+                
+                var count = entriesSection.childCount;
+                for (var i = 0; i < count; i++)
+                {
+                    var entry = entriesSection.GetChild(i);
+                    if (entry.gameObject.activeSelf)
+                    {
+                        entrySectionPool.Release(entry.gameObject);
+                    }
+                }
+            },
+            Destroy,
+            true,
+            20,
+            50
+        );
+        
+        entrySectionPool = new ObjectPool<GameObject>(
+            () => Instantiate(codexEntryButtonPrefab),
+            button => button.SetActive(true),
+            button => button.SetActive(false),
+            Destroy,
+            true,
+            50,
+            100
+        );
+        
         var codex = LoadCodexData();
         if (codex?.categories == null)
         {
@@ -185,18 +224,21 @@ public class UIManager : MonoBehaviour
 
         //get category from codex
         var codexCategory = _codex.categories[categoryIndex];
-        _selectedCodexSections.category = codexCategory.name;
+        _selectedCodexSections.Category = codexCategory.name;
         
         //set category name as title
         titleSectionText.text = codexCategory.name;
 
         //empty topics section
-        var topicsSectionTransform = topicsSection.transform;
-        var count = topicsSectionTransform.childCount;
+        var topicContainer = topicContainerSection.transform;
+        var count = topicContainer.childCount;
         for (var i = 0; i < count; i++)
         {
-            var topic = topicsSectionTransform.GetChild(i);
-            Destroy(topic.gameObject);
+            var topic = topicContainer.GetChild(i);
+            if (topic.gameObject.activeSelf)
+            {
+                topicSectionPool.Release(topic.gameObject);
+            }
         }
 
         var index = 0;
@@ -209,22 +251,23 @@ public class UIManager : MonoBehaviour
 
     private void SetupCodexTopic(Topic topic, int index)
     {
-        var topicSection = 
-            Instantiate(topicSectionPrefab, topicsSection.transform, true);
-        
+        var topicSection = topicSectionPool.Get();
         var topicToggleTransform = topicSection.transform.Find("TopicToggle");
 
         var textComponent = topicToggleTransform.Find("Text").GetComponent<TextMeshProUGUI>();
         textComponent.text = topic.name;
 
         var toggleComponent = topicToggleTransform.GetComponent<Toggle>();
+        toggleComponent.isOn = false;
         var entriesSection = topicSection.transform.Find("EntriesSection");
+        entriesSection.gameObject.SetActive(false);
         if (!_topicTogglesToEntrySections.ContainsKey(toggleComponent))
         {
             _topicTogglesToEntrySections.Add(toggleComponent,
                 entriesSection.gameObject);
         }
-
+        
+        toggleComponent.onValueChanged.RemoveAllListeners();
         toggleComponent.onValueChanged.AddListener(delegate { TopicToggleChanged(toggleComponent); });
 
         foreach (var entry in topic.entries)
@@ -235,14 +278,16 @@ public class UIManager : MonoBehaviour
 
     private void SetupCodexEntry(Transform entriesSection, Entry entry)
     {
-        GameObject button =
-            Instantiate(codexEntryButtonPrefab, entriesSection.transform, false);
-
+        GameObject button = entrySectionPool.Get();
+        
+        button.transform.SetParent(entriesSection);
         var textComponent = button.transform.Find("Text");
         var textElem = textComponent.GetComponent<TextMeshProUGUI>();
         textElem.text = entry.name;
 
         var buttonComponent = button.GetComponent<Button>();
+        
+        buttonComponent.onClick.RemoveAllListeners();
         buttonComponent.onClick.AddListener(delegate { EntryButtonClicked(entry.name); });
     }
 
@@ -336,8 +381,8 @@ public class UIManager : MonoBehaviour
         if (!found || !section) return;
 
         var textComponent = toggle.transform.Find("Text").GetComponent<TextMeshProUGUI>();
-        _selectedCodexSections.topic = textComponent.text;
-        section.SetActive(!section.activeSelf);
+        _selectedCodexSections.Topic = textComponent.text;
+        section.SetActive(toggle.isOn);
     }
 
     private void CategoryToggleChanged(Toggle toggle)
@@ -353,8 +398,8 @@ public class UIManager : MonoBehaviour
     {
         topicsScrollView.SetActive(false);
 
-        var category = _codex.categories.Find(cat => cat.name == _selectedCodexSections.category);
-        var topic = category.topics.Find(topic => topic.name == _selectedCodexSections.topic);
+        var category = _codex.categories.Find(cat => cat.name == _selectedCodexSections.Category);
+        var topic = category.topics.Find(topic => topic.name == _selectedCodexSections.Topic);
         var entry = topic.entries.Find(entry => entry.name == entryName);
 
         titleSectionText.text = entry.name;
@@ -370,9 +415,8 @@ public class UIManager : MonoBehaviour
         categoriesSection.SetActive(false);
         entryNavSection.SetActive(true);
         
+        backNavToggle.onValueChanged.RemoveAllListeners();
         backNavToggle.onValueChanged.AddListener(delegate { OnBackNavToggle(); });
-
-        _selectedCodexSections.entry = entry.name;
         entryScrollView.SetActive(true);
     }
 
@@ -403,13 +447,10 @@ public class UIManager : MonoBehaviour
         //TODO refactor logic to get category
         var categoryToIndex =
             _categoryTogglesToCategoryIndices.First(
-                pair => pair.Key.name.Replace("Toggle", "") == _selectedCodexSections.category
+                pair => pair.Key.name.Replace("Toggle", "") == _selectedCodexSections.Category
             );
 
         LoadCategory(categoryToIndex.Value);
-
-        //TODO not working
-        TopicToggleChanged(categoryToIndex.Key);
 
         categoriesSection.SetActive(true);
         entryNavSection.SetActive(false);
