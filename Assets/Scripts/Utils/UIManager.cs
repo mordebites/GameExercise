@@ -112,8 +112,8 @@ public class UIManager : MonoBehaviour
     [SerializeField] private GameObject codexEntryButtonPrefab;
 
     //pools
-    private ObjectPool<GameObject> topicSectionPool;
-    private ObjectPool<GameObject> entrySectionPool;
+    private ObjectPool<GameObject> _topicSectionPool;
+    private ObjectPool<GameObject> _entrySectionPool;
     
     //UI element interaction events
     public UnityEvent moveButtonPressed;
@@ -123,7 +123,7 @@ public class UIManager : MonoBehaviour
 
     private void Awake()
     {
-        topicSectionPool = new ObjectPool<GameObject>(
+        _topicSectionPool = new ObjectPool<GameObject>(
             () => Instantiate(topicSectionPrefab, topicContainerSection.transform, true),
             section => section.SetActive(true),
             section =>
@@ -137,7 +137,7 @@ public class UIManager : MonoBehaviour
                     var entry = entriesSection.GetChild(i);
                     if (entry.gameObject.activeSelf)
                     {
-                        entrySectionPool.Release(entry.gameObject);
+                        _entrySectionPool.Release(entry.gameObject);
                     }
                 }
             },
@@ -147,7 +147,7 @@ public class UIManager : MonoBehaviour
             50
         );
         
-        entrySectionPool = new ObjectPool<GameObject>(
+        _entrySectionPool = new ObjectPool<GameObject>(
             () => Instantiate(codexEntryButtonPrefab),
             button => button.SetActive(true),
             button => button.SetActive(false),
@@ -237,21 +237,19 @@ public class UIManager : MonoBehaviour
             var topic = topicContainer.GetChild(i);
             if (topic.gameObject.activeSelf)
             {
-                topicSectionPool.Release(topic.gameObject);
+                _topicSectionPool.Release(topic.gameObject);
             }
         }
 
-        var index = 0;
         foreach (var topic in codexCategory.topics)
         {
-            SetupCodexTopic(topic, index);
-            index++;
+            SetupCodexTopic(topic);
         }
     }
 
-    private void SetupCodexTopic(Topic topic, int index)
+    private void SetupCodexTopic(Topic topic)
     {
-        var topicSection = topicSectionPool.Get();
+        var topicSection = _topicSectionPool.Get();
         var topicToggleTransform = topicSection.transform.Find("TopicToggle");
 
         var textComponent = topicToggleTransform.Find("Text").GetComponent<TextMeshProUGUI>();
@@ -278,7 +276,7 @@ public class UIManager : MonoBehaviour
 
     private void SetupCodexEntry(Transform entriesSection, Entry entry)
     {
-        GameObject button = entrySectionPool.Get();
+        GameObject button = _entrySectionPool.Get();
         
         button.transform.SetParent(entriesSection);
         var textComponent = button.transform.Find("Text");
@@ -333,6 +331,13 @@ public class UIManager : MonoBehaviour
         var screenPosition = cameraMain.WorldToScreenPoint(position);
         tokenInfoPanel.transform.position = screenPosition;
         tokenInfoPanel.SetActive(true);
+    }
+
+    public void UpdateTokenInfoPanel(int health, int attack, int defence)
+    {
+        tokenHealthText.text = health.ToString();
+        tokenAttackText.text = attack.ToString();
+        tokenDefenceText.text = defence.ToString();
     }
 
     public void UpdateActionPoints(int newPoints)
@@ -444,10 +449,9 @@ public class UIManager : MonoBehaviour
         topicsScrollView.SetActive(true);
         entryScrollView.SetActive(false);
 
-        //TODO refactor logic to get category
         var categoryToIndex =
             _categoryTogglesToCategoryIndices.First(
-                pair => pair.Key.name.Replace("Toggle", "") == _selectedCodexSections.Category
+                pair => pair.Key.name.Contains(_selectedCodexSections.Category)
             );
 
         LoadCategory(categoryToIndex.Value);

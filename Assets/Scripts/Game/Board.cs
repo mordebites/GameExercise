@@ -97,8 +97,8 @@ public class Board : MonoBehaviour
         if (!_controller.IsGameInProgress()) return;
         if (!inputPosition.HasValue) return;
         
-        Vector2Int coords = CalculateCoordsFromPosition(inputPosition.Value);
-        Token token = GetTokenOnSquare(coords);
+        var coords = CalculateCoordsFromPosition(inputPosition.Value);
+        var token = GetTokenOnSquare(coords);
         if (token && token != _selectedToken)
         {
             _uiManager.ShowTokenInfoPanel(inputPosition.Value, token.Health, token.Attack, token.Defence);   
@@ -177,7 +177,13 @@ public class Board : MonoBehaviour
     {
         var token = GetTokenOnSquare(coords);
         var damage = Math.Max(0, _selectedToken.Attack - token.Defence);
-        token.Health -= damage;
+        var newHealth = token.Health - damage;
+
+        if (token.Health != newHealth)
+        {
+            token.Health = newHealth;
+            _uiManager.UpdateTokenInfoPanel(newHealth, token.Attack, token.Defence);
+        }
 
         return token.Health <= 0;
     }
