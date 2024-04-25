@@ -20,17 +20,21 @@ public class SquareSelectorCreator : MonoBehaviour
     {
         public GameObject Selector;
         public Token Token;
+        public SpriteRenderer Sprite;
 
-        public SelectorInfo(GameObject selector, Token token)
+        public SelectorInfo(GameObject selector, Token token, SpriteRenderer sprite)
         {
             Selector = selector;
             Token = token;
+            Sprite = sprite;
         }
     }
+    
+    [SerializeField] private Color freeSquareColour;
+    [SerializeField] private Color opponentSquareColour;
+    [SerializeField] private Color defendedSquareColour;
 
-    [SerializeField] private Material freeSquareMaterial;
-    [SerializeField] private Material opponentSquareMaterial;
-    [SerializeField] private Material defendedSquareMaterial;
+    
     [SerializeField] private GameObject selectorPrefab;
     private readonly List<SelectorInfo> _moveSelectors = new();
     private readonly Dictionary<Player, SelectorList> _defenceSelectors = new();
@@ -44,7 +48,8 @@ public class SquareSelectorCreator : MonoBehaviour
             list = new SelectorList(new List<SelectorInfo>(), 0);
             _defenceSelectors[player] = list;
         }
-        ShowSquare(list.Selectors, ref list.Index, position, token, defendedSquareMaterial);
+
+        ShowSquare(list.Selectors, ref list.Index, position, token, defendedSquareColour);
     }
 
     public void ClearDefendedSquares(Player player)
@@ -61,14 +66,14 @@ public class SquareSelectorCreator : MonoBehaviour
         _defenceSelectors.TryGetValue(player, out SelectorList list);
 
         if (list == null) return;
-        
+
         var selectorIndex = list.Selectors.FindIndex(info => info.Token == token);
         var info = list.Selectors[selectorIndex];
         list.Selectors.RemoveAt(selectorIndex);
-        
+
         info.Selector.SetActive(false);
         info.Token = null;
-        
+
         list.Selectors.Add(info);
         list.Index--;
     }
@@ -78,38 +83,36 @@ public class SquareSelectorCreator : MonoBehaviour
         ClearAvailableMoves();
         foreach (var (position, isEmpty) in squareData)
         {
-            var material = isEmpty ? freeSquareMaterial : opponentSquareMaterial;
-            ShowSquare(_moveSelectors, ref _moveSelectorIndex, position, token, material);
+            var colour = isEmpty ? freeSquareColour : opponentSquareColour;
+            ShowSquare(_moveSelectors, ref _moveSelectorIndex, position, token, colour);
         }
     }
-    
+
     public void ClearAvailableMoves()
     {
         ClearSquares(_moveSelectors, ref _moveSelectorIndex);
     }
 
     private void ShowSquare(
-        List<SelectorInfo> selectors, 
-        ref int index, 
+        List<SelectorInfo> selectors,
+        ref int index,
         Vector3 position,
         Token token,
-        Material material
+        Color colour
     )
     {
         if (index >= selectors.Count)
         {
             var newSelector = Instantiate(selectorPrefab, Vector3.zero, Quaternion.identity);
-            selectors.Add(new SelectorInfo(newSelector, token));
+            var sprite = newSelector.transform.GetChild(0).GetComponent<SpriteRenderer>();
+            selectors.Add(new SelectorInfo(newSelector, token, sprite));
         }
 
         var info = selectors[index];
         info.Token = token;
         info.Selector.transform.position = position;
         info.Selector.SetActive(true);
-        foreach (var setter in info.Selector.GetComponentsInChildren<MaterialSetter>())
-        {
-            setter.SetSingleMaterial(material);
-        }
+        info.Sprite.color = colour;
 
         index++;
     }
@@ -122,6 +125,6 @@ public class SquareSelectorCreator : MonoBehaviour
             info.Token = null;
         }
 
-        index = 0;        
+        index = 0;
     }
 }
