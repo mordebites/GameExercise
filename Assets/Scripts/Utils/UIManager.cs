@@ -290,20 +290,17 @@ public class UIManager : MonoBehaviour
 
     public void UpdateActionPoints(int newPoints)
     {
-        //TODO refactor
-        actionPointsText.text = "Action points: " + newPoints;
+        actionPointsText.text = newPoints.ToString();
     }
 
     public void UpdateTurnCounter(int newCounter)
     {
-        //TODO improve
-        currentTurnText.text = "Turn: " + newCounter;
+        currentTurnText.text = newCounter.ToString();
     }
 
     public void UpdateCurrentPlayer(string currentPlayer)
     {
-        //TODO improve
-        currentPlayerText.text = "Player: " + currentPlayer;
+        currentPlayerText.text = currentPlayer;
     }
 
     public void ShowActionButtonsAtPosition(Vector3 position)
