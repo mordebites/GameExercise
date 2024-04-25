@@ -278,10 +278,9 @@ public class UIManager : MonoBehaviour
 
     public void ShowTokenInfoPanel(Vector3 position, int health, int attack, int defence)
     {
-        //TODO refactor
-        tokenHealthText.text = "Health: " + health;
-        tokenAttackText.text = "Attack: " + attack;
-        tokenDefenceText.text = "Defence: " + defence;
+        tokenHealthText.text = health.ToString();
+        tokenAttackText.text = attack.ToString();
+        tokenDefenceText.text = defence.ToString();
 
         var screenPosition = cameraMain.WorldToScreenPoint(position);
         tokenInfoPanel.transform.position = screenPosition;
