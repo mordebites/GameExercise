@@ -59,7 +59,7 @@ struct Entry
 
 struct SelectedCodexSections
 {
-    public string Category;
+    public int CategoryIndex;
     public string Topic;
 }
 
@@ -123,39 +123,10 @@ public class UIManager : MonoBehaviour
 
     private void Awake()
     {
-        _topicSectionPool = new ObjectPool<GameObject>(
-            () => Instantiate(topicSectionPrefab, topicContainerSection.transform, true),
-            section => section.SetActive(true),
-            section =>
-            {
-                section.SetActive(false);
-                var entriesSection = section.transform.Find("EntriesSection");
-                
-                var count = entriesSection.childCount;
-                for (var i = 0; i < count; i++)
-                {
-                    var entry = entriesSection.GetChild(i);
-                    if (entry.gameObject.activeSelf)
-                    {
-                        _entrySectionPool.Release(entry.gameObject);
-                    }
-                }
-            },
-            Destroy,
-            true,
-            20,
-            50
-        );
-        
-        _entrySectionPool = new ObjectPool<GameObject>(
-            () => Instantiate(codexEntryButtonPrefab),
-            button => button.SetActive(true),
-            button => button.SetActive(false),
-            Destroy,
-            true,
-            50,
-            100
-        );
+        _selectedCodexSections.CategoryIndex = -1;
+
+        InitializeTopicSectionPool();
+        InitializeEntrySectionPool();
         
         var codex = LoadCodexData();
         if (codex?.categories == null)
@@ -167,6 +138,48 @@ public class UIManager : MonoBehaviour
         _codex = codex.Value;
 
         SetupCodexCategoryToggles();
+    }
+
+    private void InitializeEntrySectionPool()
+    {
+        _entrySectionPool = new ObjectPool<GameObject>(
+            () => Instantiate(codexEntryButtonPrefab),
+            button => button.SetActive(true),
+            button => button.SetActive(false),
+            Destroy,
+            true,
+            50,
+            100
+        );
+    }
+
+    private void InitializeTopicSectionPool()
+    {
+        _topicSectionPool = new ObjectPool<GameObject>(
+            () => Instantiate(topicSectionPrefab, topicContainerSection.transform, true),
+            section => section.SetActive(true),
+            ReleaseTopicSectionFromPool,
+            Destroy,
+            true,
+            20,
+            50
+        );
+    }
+
+    private void ReleaseTopicSectionFromPool(GameObject section)
+    {
+        section.SetActive(false);
+        var entriesSection = section.transform.Find("EntriesSection");
+
+        var count = entriesSection.childCount;
+        for (var i = 0; i < count; i++)
+        {
+            var entry = entriesSection.GetChild(i);
+            if (entry.gameObject.activeSelf)
+            {
+                _entrySectionPool.Release(entry.gameObject);
+            }
+        }
     }
 
     private static Codex? LoadCodexData()
@@ -222,9 +235,24 @@ public class UIManager : MonoBehaviour
             return;
         }
 
+        //TODO refactor
+        var (prevCategoryToggle, _) = _categoryTogglesToCategoryIndices
+            .FirstOrDefault(pair => pair.Value == _selectedCodexSections.CategoryIndex);
+        if (prevCategoryToggle)
+        {
+            prevCategoryToggle.interactable = true;
+        }
+        
+        var (categoryToggle, _) = _categoryTogglesToCategoryIndices
+            .FirstOrDefault(pair => pair.Value == categoryIndex);
+        if (categoryToggle)
+        {
+            categoryToggle.interactable = false;
+        }
+
         //get category from codex
         var codexCategory = _codex.categories[categoryIndex];
-        _selectedCodexSections.Category = codexCategory.name;
+        _selectedCodexSections.CategoryIndex = categoryIndex;
         
         //set category name as title
         titleSectionText.text = codexCategory.name;
@@ -403,7 +431,7 @@ public class UIManager : MonoBehaviour
     {
         topicsScrollView.SetActive(false);
 
-        var category = _codex.categories.Find(cat => cat.name == _selectedCodexSections.Category);
+        var category = _codex.categories[_selectedCodexSections.CategoryIndex];
         var topic = category.topics.Find(topic => topic.name == _selectedCodexSections.Topic);
         var entry = topic.entries.Find(entry => entry.name == entryName);
 
@@ -449,12 +477,7 @@ public class UIManager : MonoBehaviour
         topicsScrollView.SetActive(true);
         entryScrollView.SetActive(false);
 
-        var categoryToIndex =
-            _categoryTogglesToCategoryIndices.First(
-                pair => pair.Key.name.Contains(_selectedCodexSections.Category)
-            );
-
-        LoadCategory(categoryToIndex.Value);
+        LoadCategory(_selectedCodexSections.CategoryIndex);
 
         categoriesSection.SetActive(true);
         entryNavSection.SetActive(false);
