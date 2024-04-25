@@ -97,6 +97,9 @@ public class UIManager : MonoBehaviour
     
     [SerializeField] private Toggle backNavToggle;
 
+    [SerializeField] private GameObject topicsScrollView;
+    [SerializeField] private GameObject entryScrollView;
+    
     //camera
     [SerializeField] private Camera cameraMain;
     
@@ -189,8 +192,8 @@ public class UIManager : MonoBehaviour
         var count = topicsSectionTransform.childCount;
         for (var i = 0; i < count; i++)
         {
-            var childTransform = topicsSectionTransform.GetChild(i);
-            childTransform.gameObject.SetActive(false);
+            var topic = topicsSectionTransform.GetChild(i);
+            Destroy(topic.gameObject);
         }
 
         var index = 0;
@@ -204,11 +207,8 @@ public class UIManager : MonoBehaviour
     private void SetupCodexTopic(Topic topic, int index)
     {
         var topicSection = 
-            index >= topicsSection.transform.childCount 
-                ? Instantiate(topicSectionPrefab, topicsSection.transform, true) 
-                : topicsSection.transform.GetChild(index).gameObject;
+            Instantiate(topicSectionPrefab, topicsSection.transform, true);
         
-        topicSection.SetActive(true);
         var topicToggleTransform = topicSection.transform.Find("TopicToggle");
 
         var textComponent = topicToggleTransform.Find("Text").GetComponent<TextMeshProUGUI>();
@@ -345,7 +345,7 @@ public class UIManager : MonoBehaviour
 
     private void EntryButtonClicked(string entryName)
     {
-        topicsSection.gameObject.SetActive(false);
+        topicsScrollView.SetActive(false);
 
         var category = _codex.categories.Find(cat => cat.name == _selectedCodexSections.category);
         var topic = category.topics.Find(topic => topic.name == _selectedCodexSections.topic);
@@ -367,7 +367,7 @@ public class UIManager : MonoBehaviour
         backNavToggle.onValueChanged.AddListener(delegate { OnBackNavToggle(); });
 
         _selectedCodexSections.entry = entry.name;
-        entrySection.SetActive(true);
+        entryScrollView.SetActive(true);
     }
 
     private static bool LoadImage(string path, out Texture2D texture)
@@ -391,8 +391,8 @@ public class UIManager : MonoBehaviour
 
     private void OnBackNavToggle()
     {
-        topicsSection.SetActive(true);
-        entrySection.SetActive(false);
+        topicsScrollView.SetActive(true);
+        entryScrollView.SetActive(false);
 
         //TODO refactor logic to get category
         var categoryToIndex =
