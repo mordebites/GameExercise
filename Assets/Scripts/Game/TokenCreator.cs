@@ -17,11 +17,11 @@ public class TokenCreator : MonoBehaviour
     {
         foreach (var tokenPrefab in tokenPrefabs)
         {
-            _namesToTokens.Add(tokenPrefab.GetComponent<Token>().GetType().ToString(), tokenPrefab);
+            _namesToTokens.Add(tokenPrefab.name, tokenPrefab);
         }
     }
 
-    public GameObject CreateToken(Type type)
+    public GameObject CreateToken(TokenType type)
     {
         var prefab = _namesToTokens[type.ToString()];
         if (!prefab) return null;

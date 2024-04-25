@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 3304258}
   - component: {fileID: 2374884}
   - component: {fileID: -2078648685574158569}
-  - component: {fileID: 3324016591096948089}
+  - component: {fileID: 5047336626778764669}
   m_Layer: 0
   m_Name: Knight
   m_TagString: Untagged
@@ -97,7 +97,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a38836a3d4a07a881865a8887a89e2f6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!114 &3324016591096948089
+--- !u!114 &5047336626778764669
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -106,16 +106,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 196802}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 096f82ba80d044a3d8e7b8ec1cff4a0e, type: 3}
+  m_Script: {fileID: 11500000, guid: 16e8ec41131d4056a983aa9d30c7c2e2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   availableMoves: []
-  offsets:
-  - {x: 2, y: 1}
-  - {x: 2, y: -1}
-  - {x: 1, y: 2}
-  - {x: 1, y: -2}
-  - {x: -2, y: 1}
-  - {x: -2, y: -1}
-  - {x: -1, y: 2}
-  - {x: -1, y: -2}

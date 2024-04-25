@@ -6,7 +6,7 @@ using Enums;
 using UnityEngine;
 
 [RequireComponent(typeof(MaterialSetter))]
-public abstract class Token : MonoBehaviour
+public class Token : MonoBehaviour
 {
     private const int MaxTilesPerActionPoint = 1;
     
@@ -23,17 +23,17 @@ public abstract class Token : MonoBehaviour
     public bool IsDefending { get; set; }
     public Vector2Int OccupiedSquare { get; private set; }
     public TeamColour Team { get; private set; }
-    public List<Vector2Int> availableMoves;
+    public List<Vector2Int> AvailableMoves { get; private set; }
     
     private void Awake()
     {
-        availableMoves = new List<Vector2Int>();
+        AvailableMoves = new List<Vector2Int>();
         _materialSetter = GetComponent<MaterialSetter>();
     }
 
     public void SelectAvailableSquares()
     {
-        availableMoves.Clear();
+        AvailableMoves.Clear();
 
         const float range = MaxTilesPerActionPoint;
         foreach (var direction in _directions)
@@ -72,20 +72,23 @@ public abstract class Token : MonoBehaviour
 
     public bool CanMoveTo(Vector2Int coords)
     {
-        return !IsDefending && availableMoves.Contains(coords);
+        return !IsDefending && AvailableMoves.Contains(coords);
     }
 
     private void TryAddMove(Vector2Int coords)
     {
-        availableMoves.Add(coords);
+        AvailableMoves.Add(coords);
     }
 
-    public void SetData(Vector2Int coords, TeamColour colour, Board board)
+    public void SetData(Vector2Int coords, TeamColour colour, Board board, TokenStats stats)
     {
         OccupiedSquare = coords;
         Team = colour;
         Board = board;
         transform.position = board.CalculatePositionFromCoords(coords);
+        Health = stats.health;
+        Attack = stats.attack;
+        Defence = stats.defence;
     }
 
     public virtual void MoveToken(Vector2Int coords)
@@ -97,6 +100,6 @@ public abstract class Token : MonoBehaviour
 
     public bool IsAttackingTokenOfType<T>() where T : Token
     {
-        return availableMoves.Any(square => Board.GetTokenOnSquare(square) is T);
+        return AvailableMoves.Any(square => Board.GetTokenOnSquare(square) is T);
     }
 }

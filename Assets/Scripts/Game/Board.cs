@@ -50,7 +50,7 @@ public class Board : MonoBehaviour
 
         _selectedToken.IsDefending = true;
         var position = CalculatePositionFromCoords(_lastSelectedSquare);
-        _squareSelector.ShowDefendedSquare(position, _controller.activePlayer, _selectedToken);
+        _squareSelector.ShowDefendedSquare(position, _controller.ActivePlayer, _selectedToken);
         OnMoveSelectedToken(_lastSelectedSquare, _selectedToken);
     }
 
@@ -205,7 +205,7 @@ public class Board : MonoBehaviour
         _selectedToken = token;
         _controller.SelectToken(token);
         _selectedToken.SelectAvailableSquares();
-        var moves = _selectedToken.availableMoves;
+        var moves = _selectedToken.AvailableMoves;
         ShowAvailableMovesSquares(moves);
     }
 

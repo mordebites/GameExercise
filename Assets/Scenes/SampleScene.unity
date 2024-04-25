@@ -4282,6 +4282,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   startingBoardLayout: {fileID: 11400000, guid: 495d2ea8c510002f498adb2ca4f4d883, type: 2}
+  tokenSetStats: {fileID: 11400000, guid: e29be31b7eaad4e429d94a3ae2e962b2, type: 2}
   board: {fileID: 154889366}
 --- !u!114 &1278665312
 MonoBehaviour:

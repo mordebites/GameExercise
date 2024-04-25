@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 3387380}
   - component: {fileID: 2369410}
   - component: {fileID: -1354899569660806978}
-  - component: {fileID: 4748754643871622386}
+  - component: {fileID: 6380387255531672604}
   m_Layer: 0
   m_Name: Rook
   m_TagString: Untagged
@@ -97,7 +97,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a38836a3d4a07a881865a8887a89e2f6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!114 &4748754643871622386
+--- !u!114 &6380387255531672604
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -106,7 +106,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 125018}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bcca79d9a87d274488215309862fd7f0, type: 3}
+  m_Script: {fileID: 11500000, guid: 16e8ec41131d4056a983aa9d30c7c2e2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   availableMoves: []

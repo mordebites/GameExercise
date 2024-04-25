@@ -31,15 +31,15 @@ public class BoardLayout : ScriptableObject
         return new Vector2Int(-1, -1);
     }
 
-    public string GetTokenNameAtIndex(int index)
+    public TokenType GetTokenTypeAtIndex(int index)
     {
         if (boardSquares.Length > index)
         {
-            return boardSquares[index].type.ToString();
+            return boardSquares[index].type;
         }
 
         Debug.LogError("Token index out of range");
-        return null;
+        return TokenType.Bishop;
     }
 
     public TeamColour GetSquareTeamColourAtIndex(int index)

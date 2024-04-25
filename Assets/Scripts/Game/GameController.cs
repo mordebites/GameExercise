@@ -1,8 +1,8 @@
 using System;
 using System.Linq;
 using Enums;
+using UnityEditor;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 [RequireComponent(typeof(TokenCreator))]
 public class GameController : MonoBehaviour
@@ -17,6 +17,7 @@ public class GameController : MonoBehaviour
     private const int MaxActionPointsPerTurn = 4;
 
     [SerializeField] private BoardLayout startingBoardLayout;
+    [SerializeField] private TokenSetStats tokenSetStats;
     [SerializeField] private Board board;
     private UIManager _uiManager;
     private TokenCreator _tokenCreator;
@@ -28,7 +29,7 @@ public class GameController : MonoBehaviour
     private int _turnCounter;
     private int _currentPlayerActionPoints;
 
-    public Player activePlayer { get; private set; }
+    public Player ActivePlayer { get; private set; }
 
     private void Awake()
     {
@@ -61,7 +62,7 @@ public class GameController : MonoBehaviour
         _uiManager.endTurnButtonPressed.AddListener(OnEndTurnButtonPressed);
         
         board.SetDependencies(this, _uiManager);
-        CreateTokensFromLayout(startingBoardLayout);
+        CreateTokensFromLayoutAndStats(startingBoardLayout, tokenSetStats);
         _state = GameState.Play;
     }
 
@@ -87,23 +88,34 @@ public class GameController : MonoBehaviour
         return _state == GameState.Play;
     }
 
-    private void CreateTokensFromLayout(BoardLayout boardLayout)
+    private void CreateTokensFromLayoutAndStats(BoardLayout boardLayout, TokenSetStats stats)
     {
         for (var i = 0; i < boardLayout.GetTokenCount(); i++)
         {
             var coords = boardLayout.GetSquareCoordsAtIndex(i);
-            var typeName = boardLayout.GetTokenNameAtIndex(i);
+            var type = boardLayout.GetTokenTypeAtIndex(i);
             var colour = boardLayout.GetSquareTeamColourAtIndex(i);
-            var type = Type.GetType(typeName);
 
-            CreateTokenAndInitialize(coords, type, colour);
+            CreateTokenAndInitialize(coords, type, colour, stats);
         }
     }
 
-    private void CreateTokenAndInitialize(Vector2Int coords, Type type, TeamColour team)
+    private void CreateTokenAndInitialize(Vector2Int coords, TokenType tokenType, TeamColour team, TokenSetStats stats)
     {
-        var newToken = _tokenCreator.CreateToken(type).GetComponent<Token>();
-        newToken.SetData(coords, team, board);
+        var newToken = _tokenCreator.CreateToken(tokenType).GetComponent<Token>();
+        var tokenStats = stats.GetStatsForType(tokenType);
+
+        if (tokenStats == null)
+        {
+            Debug.LogError($"Could not find stats for token type: {tokenType}");
+#if UNITY_EDITOR
+            EditorApplication.ExitPlaymode();
+#else
+    Application.Quit();
+#endif
+        }
+        
+        newToken.SetData(coords, team, board, tokenStats);
 
         var teamMaterial = _tokenCreator.GetTeamMaterial(team);
         newToken.SetMaterial(teamMaterial);
@@ -126,7 +138,7 @@ public class GameController : MonoBehaviour
 
     public bool IsTeamTurnActive(TeamColour tokenTeam)
     {
-        return tokenTeam == activePlayer.team;
+        return tokenTeam == ActivePlayer.team;
     }
 
     public void UseActivePlayerActionPoint()
@@ -148,7 +160,7 @@ public class GameController : MonoBehaviour
         else
         {
             UpdateTurnCounter(_turnCounter + 1);
-            var nextPlayer = GetOpponent(activePlayer);
+            var nextPlayer = GetOpponent(ActivePlayer);
             ChangeActiveTeam(nextPlayer);
             ClearDefendedSquares();
         }
@@ -156,8 +168,8 @@ public class GameController : MonoBehaviour
 
     private void ClearDefendedSquares()
     {
-        board.ClearDefendedSquares(activePlayer);
-        foreach (var token in activePlayer.activeTokens)
+        board.ClearDefendedSquares(ActivePlayer);
+        foreach (var token in ActivePlayer.activeTokens)
         {
             token.IsDefending = false;
         }
@@ -179,10 +191,10 @@ public class GameController : MonoBehaviour
 
     private void ChangeActiveTeam(Player player)
     {
-        activePlayer = player;
+        ActivePlayer = player;
         UpdateActionPoints(MaxActionPointsPerTurn);
         
-        _uiManager.UpdateCurrentPlayer(activePlayer.team.ToString());
+        _uiManager.UpdateCurrentPlayer(ActivePlayer.team.ToString());
     }
 
     private Player GetOpponent(Player player)
