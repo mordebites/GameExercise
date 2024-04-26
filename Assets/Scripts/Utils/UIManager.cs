@@ -3,11 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using TMPro;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.Pool;
-using UnityEngine.Serialization;
 using UnityEngine.UI;
 using GameObject = UnityEngine.GameObject;
 
@@ -71,13 +69,13 @@ public class UIManager : MonoBehaviour
     private Codex _codex;
 
     private readonly Dictionary<Toggle, GameObject> _topicTogglesToEntrySections = new();
-    private readonly Dictionary<Toggle, int> _categoryTogglesToCategoryIndices = new();
+    private readonly Dictionary<Toggle, int> _categoryTogglesToIndices = new();
     private SelectedCodexSections _selectedCodexSections;
 
     //UI sections and elements references
     [SerializeField] private GameObject gameSection;
     [SerializeField] private GameObject codexSection;
-    [FormerlySerializedAs("topicsSection")] [SerializeField] private GameObject topicContainerSection;
+    [SerializeField] private GameObject topicContainerSection;
     [SerializeField] private GameObject entrySection;
     [SerializeField] private GameObject categoriesSection;
     [SerializeField] private GameObject entryNavSection;
@@ -131,10 +129,10 @@ public class UIManager : MonoBehaviour
         InitializeEntrySectionPool();
         
         var codex = LoadCodexData();
-        if (codex?.categories == null)
+        if (codex == null)
         {
-            Debug.LogError("Could not find categories in parsed codex");
-            return;
+            Debug.LogError("Null codex");
+            ApplicationManager.QuitGame();
         }
 
         _codex = codex.Value;
@@ -189,7 +187,8 @@ public class UIManager : MonoBehaviour
         var jsonCodex = ReadFile(CodexPath);
         if (string.IsNullOrEmpty(jsonCodex))
         {
-            throw new FormatException("Could not read codex json");
+            Debug.LogError($"Could not read codex json at path: {CodexPath}");
+            ApplicationManager.QuitGame();
         }
 
         try
@@ -198,7 +197,8 @@ public class UIManager : MonoBehaviour
         }
         catch (Exception exception)
         {
-            Debug.LogError(exception);
+            Debug.LogError($"Could not parse codex json at path: {CodexPath} - got exception: {exception}");
+            ApplicationManager.QuitGame();
         }
 
         return null;
@@ -206,20 +206,44 @@ public class UIManager : MonoBehaviour
 
     private void SetupCodexCategoryToggles()
     {
-        for (var i = 0; i < _codex.categories.Count; i++)
+        if (_codex.categories == null || !_codex.categories.Any())
+        {
+            Debug.LogError($"No categories found in codex");
+            ApplicationManager.QuitGame();
+        }
+        
+        for (var i = 0; i < _codex.categories?.Count; i++)
         {
             var category = _codex.categories[i];
+            
+            if (!CheckValidCategory(category)) continue;
+            
+            //create category toggle
             var toggle = Instantiate(codexTogglePrefab, categoriesSection.transform, false);
             toggle.SetActive(true);
             toggle.name = category.name + "Toggle";
             
+            //set category name
             var textComponent = toggle.transform.Find("Background").Find("Text").GetComponent<TextMeshProUGUI>();
             textComponent.text = category.name;
             
             var toggleComponent = toggle.GetComponent<Toggle>();
-            _categoryTogglesToCategoryIndices.Add(toggleComponent, i);
+            _categoryTogglesToIndices.Add(toggleComponent, i);
+            
+            //listen to category toggle changes
             toggleComponent.onValueChanged.AddListener(delegate { CategoryToggleChanged(toggleComponent); });
         }
+    }
+
+    private static bool CheckValidCategory(Category category)
+    {
+        if (string.IsNullOrEmpty(category.name) || category.topics == null || !category.topics.Any())
+        {
+            Debug.LogError($"Category {category.name} is malformed");
+            return false;
+        }
+
+        return true;
     }
 
     private void LoadCategory(int categoryIndex)
@@ -230,20 +254,8 @@ public class UIManager : MonoBehaviour
             return;
         }
 
-        //TODO refactor
-        var (prevCategoryToggle, _) = _categoryTogglesToCategoryIndices
-            .FirstOrDefault(pair => pair.Value == _selectedCodexSections.CategoryIndex);
-        if (prevCategoryToggle)
-        {
-            prevCategoryToggle.interactable = true;
-        }
-        
-        var (categoryToggle, _) = _categoryTogglesToCategoryIndices
-            .FirstOrDefault(pair => pair.Value == categoryIndex);
-        if (categoryToggle)
-        {
-            categoryToggle.interactable = false;
-        }
+        UpdateCategoryToggleInteractableState(_selectedCodexSections.CategoryIndex, true);
+        UpdateCategoryToggleInteractableState(categoryIndex, false);
 
         //get category from codex
         var codexCategory = _codex.categories[categoryIndex];
@@ -266,50 +278,94 @@ public class UIManager : MonoBehaviour
 
         foreach (var topic in codexCategory.topics)
         {
-            SetupCodexTopic(topic);
+            SetupCodexTopic(topic, codexCategory);
         }
     }
 
-    private void SetupCodexTopic(Topic topic)
+    private void UpdateCategoryToggleInteractableState(int categoryIndex, bool interactable)
     {
+        var (foundToggle, _) = _categoryTogglesToIndices
+            .FirstOrDefault(pair => pair.Value == categoryIndex);
+        if (foundToggle)
+        {
+            foundToggle.interactable = interactable;
+        }
+    }
+
+    private void SetupCodexTopic(Topic topic, Category category)
+    {
+        if (!CheckValidTopic(topic, category)) return;
+        
         var topicSection = _topicSectionPool.Get();
         var topicToggleTransform = topicSection.transform.Find("TopicToggle");
 
+        //set topic name
         var textComponent = topicToggleTransform.Find("Text").GetComponent<TextMeshProUGUI>();
         textComponent.text = topic.name;
 
+        //set toggle off
         var toggleComponent = topicToggleTransform.GetComponent<Toggle>();
         toggleComponent.isOn = false;
+        
+        //deactivate entries section for the topic
         var entriesSection = topicSection.transform.Find("EntriesSection");
         entriesSection.gameObject.SetActive(false);
+        
         if (!_topicTogglesToEntrySections.ContainsKey(toggleComponent))
         {
             _topicTogglesToEntrySections.Add(toggleComponent,
                 entriesSection.gameObject);
         }
         
+        //listen to changes in topic toggle state
         toggleComponent.onValueChanged.RemoveAllListeners();
         toggleComponent.onValueChanged.AddListener(delegate { TopicToggleChanged(toggleComponent); });
 
         foreach (var entry in topic.entries)
         {
-            SetupCodexEntry(entriesSection, entry);
+            SetupCodexEntry(entriesSection, entry, topic);
         }
     }
 
-    private void SetupCodexEntry(Transform entriesSection, Entry entry)
+    private static bool CheckValidTopic(Topic topic, Category category)
     {
-        GameObject button = _entrySectionPool.Get();
+        if (string.IsNullOrEmpty(topic.name) || topic.entries == null || !topic.entries.Any())
+        {
+            Debug.LogError($"Topic {topic.name} in category {category.name} is malformed");
+            return false;
+        }
+
+        return true;
+    }
+
+    private void SetupCodexEntry(Transform entriesSection, Entry entry, Topic topic)
+    {
+        if(!CheckValidEntry(entry, topic)) return;
         
+        //add entry button to topic entries section
+        GameObject button = _entrySectionPool.Get();
         button.transform.SetParent(entriesSection);
+        
+        //set button text
         var textComponent = button.transform.Find("Text");
         var textElem = textComponent.GetComponent<TextMeshProUGUI>();
         textElem.text = entry.name;
 
+        //listen to entry button clicks
         var buttonComponent = button.GetComponent<Button>();
-        
         buttonComponent.onClick.RemoveAllListeners();
         buttonComponent.onClick.AddListener(delegate { EntryButtonClicked(entry.name); });
+    }
+
+    private bool CheckValidEntry(Entry entry, Topic topic)
+    {
+        if (string.IsNullOrEmpty(entry.name) || string.IsNullOrEmpty(entry.text))
+        {
+            Debug.LogError($"Entry {entry.name} in topic {topic.name} is malformed");
+            return false;
+        }
+
+        return true;
     }
 
     public void OnMoveButtonPressed()
@@ -392,7 +448,6 @@ public class UIManager : MonoBehaviour
 
     public void CodexToggleChanged(Toggle toggle)
     {
-        Debug.Log("CodexToggleChanged");
         codexToggleChanged.Invoke(toggle.isOn);
         endTurnButton.interactable = !toggle.isOn;
         codexCanvas.gameObject.SetActive(toggle.isOn);
@@ -416,7 +471,7 @@ public class UIManager : MonoBehaviour
 
     private void CategoryToggleChanged(Toggle toggle)
     {
-        var found = _categoryTogglesToCategoryIndices.TryGetValue(toggle, out int index);
+        var found = _categoryTogglesToIndices.TryGetValue(toggle, out int index);
         if (found)
         {
             LoadCategory(index);
@@ -427,13 +482,16 @@ public class UIManager : MonoBehaviour
     {
         topicsScrollView.SetActive(false);
 
+        //find entry in codex to populate UI elements
         var category = _codex.categories[_selectedCodexSections.CategoryIndex];
         var topic = category.topics.Find(topic => topic.name == _selectedCodexSections.Topic);
         var entry = topic.entries.Find(entry => entry.name == entryName);
 
+        //set entry text fields
         titleSectionText.text = entry.name;
         entryText.text = entry.text;
         
+        //optionally set the entry image
         var result = LoadImage(entry.image, out Texture2D tex);
         if (result)
         {
@@ -446,11 +504,14 @@ public class UIManager : MonoBehaviour
             entryImage.gameObject.SetActive(false);
         }
         
+        //switch from category navigation to entry navigation
         categoriesSection.SetActive(false);
         entryNavSection.SetActive(true);
         
+        //listen to back navigation toggle changes
         backNavToggle.onValueChanged.RemoveAllListeners();
         backNavToggle.onValueChanged.AddListener(delegate { OnBackNavToggle(); });
+        
         entryScrollView.SetActive(true);
     }
 
@@ -466,7 +527,7 @@ public class UIManager : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogWarning("Could not load image. " + e);
+            Debug.LogWarning($"Could not load image at path {path}. " + e);
             return false;
         }
 
@@ -487,19 +548,15 @@ public class UIManager : MonoBehaviour
     private static string ReadFile(string path)
     {
         var fileContents = "";
-        StreamReader stream = null;
         try
         {
-            stream = new StreamReader(path);
+            using var stream = new StreamReader(path);
             fileContents = stream.ReadToEnd();
         }
         catch (Exception exception)
         {
-            Debug.LogError(exception);
-        }
-        finally
-        {
-            stream?.Dispose();
+            Debug.LogError($"Could not read file at path: {path} - Got exception: {exception}");
+            ApplicationManager.QuitGame();
         }
 
         return fileContents;
