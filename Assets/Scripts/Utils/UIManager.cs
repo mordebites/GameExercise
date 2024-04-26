@@ -439,6 +439,11 @@ public class UIManager : MonoBehaviour
         {
             entryImage.sprite =
                 Sprite.Create(tex, new Rect(0.0f, 0.0f, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+            entryImage.gameObject.SetActive(true);
+        }
+        else
+        {
+            entryImage.gameObject.SetActive(false);
         }
         
         categoriesSection.SetActive(false);
