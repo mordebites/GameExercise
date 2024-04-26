@@ -446,6 +446,11 @@ public class UIManager : MonoBehaviour
         actionButtons.SetActive(false);
     }
 
+    public bool AreActionButtonsActive()
+    {
+        return actionButtons.activeSelf;
+    }
+
     public void CodexToggleChanged(Toggle toggle)
     {
         codexToggleChanged.Invoke(toggle.isOn);

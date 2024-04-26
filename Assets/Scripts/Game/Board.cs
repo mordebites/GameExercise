@@ -28,6 +28,7 @@ public class Board : MonoBehaviour
     {
         _controller = gameController;
         _uiManager = uiManager;
+        
         _uiManager.moveButtonPressed.AddListener(OnMoveButtonPressed);
         _uiManager.defendButtonPressed.AddListener(OnDefendButtonPressed);
     }
@@ -41,7 +42,7 @@ public class Board : MonoBehaviour
     {
         if (!_controller.IsGameInProgress()) return;
 
-        Token token = GetTokenOnSquare(_lastSelectedSquare);
+        var token = GetTokenOnSquare(_lastSelectedSquare);
 
         if (!_selectedToken
             || !_selectedToken.CanMoveTo(_lastSelectedSquare)
@@ -50,6 +51,7 @@ public class Board : MonoBehaviour
 
         _selectedToken.IsDefending = true;
         var position = CalculatePositionFromCoords(_lastSelectedSquare);
+        
         _squareSelector.ShowDefendedSquare(position, _controller.ActivePlayer, _selectedToken);
         OnMoveSelectedToken(_lastSelectedSquare, _selectedToken);
     }
@@ -114,21 +116,23 @@ public class Board : MonoBehaviour
     {
         if (!_controller.IsGameInProgress()) return;
         if (!inputPosition.HasValue) return;
+        if (_uiManager.AreActionButtonsActive()) return;
         
-
-        Vector2Int coords = CalculateCoordsFromPosition(inputPosition.Value);
-        Token token = GetTokenOnSquare(coords);
+        var coords = CalculateCoordsFromPosition(inputPosition.Value);
+        var token = GetTokenOnSquare(coords);
 
         //a token is already selected
         if (_selectedToken)
         {
+            //cannot move to square
             if (!_selectedToken.CanMoveTo(coords)) return;
 
+            //opponent on square
             if (HasSquareOpponentToken(coords))
             {
                 OnMoveSelectedToken(coords, _selectedToken);
             }
-            else
+            else //choose to move to or defend square
             {
                 _uiManager.ShowActionButtonsAtPosition(inputPosition.Value);
                 _lastSelectedSquare = coords;
@@ -146,6 +150,7 @@ public class Board : MonoBehaviour
 
     private void OnMoveSelectedToken(Vector2Int coords, Token token)
     {
+        //opponent on selected square
         if (HasSquareOpponentToken(coords))
         {
             var isOpponentDead = AttackToken(coords);
@@ -157,7 +162,7 @@ public class Board : MonoBehaviour
                 token.MoveToken(coords);
             }
         }
-        else
+        else //no opponent on selected square
         {
             UpdateBoardOnTokenMove(coords, token.OccupiedSquare, token, null);
             token.MoveToken(coords);

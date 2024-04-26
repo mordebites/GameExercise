@@ -1,9 +1,6 @@
 using System;
-using System.Linq;
 using Enums;
-using UnityEditor;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 [RequireComponent(typeof(TokenCreator))]
 public class GameController : MonoBehaviour
@@ -41,8 +38,8 @@ public class GameController : MonoBehaviour
 
     private void CreatePlayers()
     {
-        _whitePlayer = new Player(TeamColour.White, board);
-        _blackPlayer = new Player(TeamColour.Black, board);
+        _whitePlayer = new Player(TeamColour.White);
+        _blackPlayer = new Player(TeamColour.Black);
     }
 
     void Start()
@@ -111,12 +108,8 @@ public class GameController : MonoBehaviour
 
         if (tokenStats == null)
         {
-            Debug.LogError($"Could not find stats for token type: {tokenType}");
-#if UNITY_EDITOR
-            EditorApplication.ExitPlaymode();
-#else
-    Application.Quit();
-#endif
+            Debug.LogError($"Could not find token stats for type {tokenType}");
+            ApplicationManager.QuitGame();
         }
         
         newToken.SetData(coords, team, board, tokenStats);
@@ -183,10 +176,7 @@ public class GameController : MonoBehaviour
     private void ClearDefendedSquares()
     {
         board.ClearDefendedSquares(ActivePlayer);
-        foreach (var token in ActivePlayer.activeTokens)
-        {
-            token.IsDefending = false;
-        }
+        ActivePlayer.ClearDefendingTokens();
     }
 
     private bool IsGameFinished()

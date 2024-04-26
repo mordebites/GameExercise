@@ -1,8 +1,6 @@
-using System;
-using System.Collections.Generic;
 using UnityEngine;
 
-public class ColliderInputReceiver : InputReceiver
+public class MouseInputReceiver : InputReceiver
 {
     [SerializeField] private Camera mainCamera;
     private Vector3 _hoveredPosition;
